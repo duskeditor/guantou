@@ -1,6 +1,24 @@
 <template>
   <PageShell title="义项详情">
-    <template v-if="flavor">
+    <view
+      v-if="loading"
+      class="state"
+    >
+      正在加载义项…
+    </view>
+    <view
+      v-else-if="loadError"
+      class="state error"
+    >
+      <text>{{ loadError }}</text>
+      <button
+        class="state-retry"
+        @tap="refresh"
+      >
+        重试
+      </button>
+    </view>
+    <template v-else-if="flavor">
       <SectionBlock>
         <view class="name">
           {{ flavor.name }}
@@ -65,11 +83,19 @@
         />
       </SectionBlock>
     </template>
+    <EmptyState
+      v-else
+      title="没有找到这个义项"
+      description="可以回到义项图鉴重新选择。"
+      action-text="浏览义项"
+      @action="toFlavors"
+    />
   </PageShell>
 </template>
 
 <script>
 import CanList from '@/components/CanList.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import PageShell from '@/components/PageShell.vue';
 import SectionBlock from '@/components/SectionBlock.vue';
 import { requireAuth } from '@/services/authGuard';
@@ -87,30 +113,47 @@ export function formatPronunciationLabel(pronunciation) {
 export default {
   components: {
     CanList,
+    EmptyState,
     PageShell,
     SectionBlock,
   },
   data() {
-    return { flavor: null, id: 0 };
+    return {
+      flavor: null,
+      id: 0,
+      loadError: '',
+      loading: false,
+    };
   },
   async onLoad(options) {
     this.id = options.id;
     await this.refresh();
   },
   async onShow() {
-    if (this.id) await this.refresh();
+    if (this.id && this.flavor) await this.refresh();
   },
   methods: {
     listCans,
     pronunciationLabel: formatPronunciationLabel,
     async refresh() {
-      this.flavor = await getFlavor(this.id);
+      this.loading = !this.flavor;
+      this.loadError = '';
+      try {
+        this.flavor = await getFlavor(this.id);
+      } catch (error) {
+        this.loadError = '义项加载失败，请重试';
+      } finally {
+        this.loading = false;
+      }
     },
     toCan(id) {
       uni.navigateTo({ url: `/pages/cans/details?id=${id}` });
     },
     toPackage(id) {
       uni.navigateTo({ url: `/pages/packages/details?id=${id}` });
+    },
+    toFlavors() {
+      uni.navigateTo({ url: '/pages/flavors/index' });
     },
     toCreateForFlavor() {
       if (!requireAuth('record_can', {
@@ -144,32 +187,32 @@ export default {
 
 .definition {
   margin-top: 14rpx;
-  color: #425148;
+  color: var(--text-secondary-color);
   line-height: 1.5;
 }
 
 .tag {
   display: inline-block;
   margin: 0 12rpx 12rpx 0;
-  background: #e8f1eb;
-  color: #1f5c43;
-  border-radius: 999rpx;
+  background: var(--accent-subtle-color);
+  color: var(--accent-color);
+  border-radius: var(--radius-pill);
   padding: 8rpx 18rpx;
 }
 
 .primary-button {
   margin-top: 24rpx;
-  background: #1f5c43;
-  color: #ffffff;
-  border-radius: 12rpx;
+  background: var(--accent-color);
+  color: var(--on-accent-color);
+  border-radius: var(--radius-sm);
 }
 
 .secondary-button {
   margin-top: 14rpx;
-  border: 1px solid #1f5c43;
-  background: #ffffff;
-  color: #1f5c43;
-  border-radius: 12rpx;
+  border: 1px solid var(--accent-color);
+  background: var(--surface-color);
+  color: var(--accent-color);
+  border-radius: var(--radius-sm);
 }
 
 .variant {
@@ -177,6 +220,28 @@ export default {
   justify-content: space-between;
   gap: 20rpx;
   padding: 16rpx 0;
-  border-bottom: 1px solid #eef1eb;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.state {
+  padding: var(--space-5) var(--space-3);
+  color: var(--muted-color);
+  text-align: center;
+}
+
+.state.error {
+  color: var(--danger-color);
+}
+
+.state-retry {
+  margin: var(--space-2) auto 0;
+  padding: 0 var(--space-3);
+  background: transparent;
+  color: var(--accent-color);
+  font-size: var(--font-size-sm);
+}
+
+.state-retry::after {
+  border: 0;
 }
 </style>

@@ -64,12 +64,13 @@
       @open="toDetail(item.id)"
     />
 
-    <EmptyState
+    <SectionBlock
       v-if="showEmpty"
-      title="没有找到写法"
-      description="换个关键词或类型看看，也可以回到义项图鉴继续浏览。"
-      action-text="浏览全部"
-      @action="resetFilters"
+      :empty="true"
+      empty-title="没有找到写法"
+      empty-description="换个关键词或类型看看，也可以回到义项图鉴继续浏览。"
+      empty-action-text="浏览全部"
+      @empty-action="resetFilters"
     />
     <uni-load-more
       v-if="packages.length"
@@ -79,9 +80,9 @@
 </template>
 
 <script>
-import EmptyState from '@/components/EmptyState.vue';
 import EntityCard from '@/components/EntityCard.vue';
 import PageShell from '@/components/PageShell.vue';
+import SectionBlock from '@/components/SectionBlock.vue';
 import { listPackages } from '@/services/guantou';
 
 export const PACKAGE_TYPES = [
@@ -104,9 +105,9 @@ export function packageListParams(search, packageType, page = 1) {
 
 export default {
   components: {
-    EmptyState,
     EntityCard,
     PageShell,
+    SectionBlock,
   },
   data() {
     return {
@@ -194,47 +195,55 @@ export default {
 
 <style scoped>
 .filters {
-  margin-bottom: 24rpx;
+  margin-bottom: var(--space-3);
 }
 
 .search-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 16rpx;
+  gap: var(--space-2);
 }
 
 .search-input,
 .picker-field {
   box-sizing: border-box;
-  border: 1px solid #d9dfd5;
-  background: #ffffff;
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
 }
 
 .search-input {
-  border-radius: 999rpx;
-  padding: 18rpx 24rpx;
+  min-height: 96rpx;
+  border-radius: var(--radius-pill);
+  padding: 0 var(--space-3);
+  line-height: 96rpx;
 }
 
 .picker-field {
-  margin-top: 16rpx;
-  border-radius: 12rpx;
+  margin-top: var(--space-2);
+  border-radius: var(--radius-sm);
   padding: 18rpx 22rpx;
-  color: #425148;
+  color: var(--text-secondary-color);
 }
 
 .small-button {
   margin: 0;
-  border-radius: 999rpx;
-  background: #1f5c43;
-  color: #ffffff;
-  font-size: 26rpx;
+  min-height: 96rpx;
+  line-height: 96rpx;
+  border-radius: var(--radius-pill);
+  background: var(--accent-color);
+  color: var(--on-accent-color);
+  font-size: var(--font-size-sm);
+}
+
+.small-button::after {
+  border: 0;
 }
 
 .skeleton-card {
   height: 170rpx;
   margin-bottom: 18rpx;
-  border-radius: 12rpx;
-  background: #e9ede6;
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle-color);
 }
 
 .error-state {
@@ -244,15 +253,20 @@ export default {
   gap: 18rpx;
   margin-bottom: 18rpx;
   padding: 20rpx;
-  border-radius: 12rpx;
-  background: #f8ece8;
-  color: #8b4438;
+  border-radius: var(--radius-sm);
+  background: var(--danger-subtle-color);
+  color: var(--danger-color);
 }
 
 .error-state button {
   flex: 0 0 auto;
   margin: 0;
-  color: #8b4438;
-  font-size: 24rpx;
+  background: transparent;
+  color: var(--danger-color);
+  font-size: var(--font-size-xs);
+}
+
+.error-state button::after {
+  border: 0;
 }
 </style>

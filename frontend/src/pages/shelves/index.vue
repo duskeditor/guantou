@@ -73,21 +73,22 @@
         :item="item"
         @open="toDetail(item.id)"
       />
-      <EmptyState
+      <SectionBlock
         v-if="!shelves.length"
-        title="还没有集盒"
-        description="创建一个集盒，按主题收纳义项和精选罐头。"
-        action-text="创建第一个集盒"
-        @action="openCreate"
+        :empty="true"
+        empty-title="还没有集盒"
+        empty-description="创建一个集盒，按主题收纳义项和精选罐头。"
+        empty-action-text="创建第一个集盒"
+        @empty-action="openCreate"
       />
     </template>
   </PageShell>
 </template>
 
 <script>
-import EmptyState from '@/components/EmptyState.vue';
 import EntityCard from '@/components/EntityCard.vue';
 import PageShell from '@/components/PageShell.vue';
+import SectionBlock from '@/components/SectionBlock.vue';
 import { requireAuth } from '@/services/authGuard';
 import { createShelf, listShelves } from '@/services/guantou';
 
@@ -103,9 +104,9 @@ function blankDraft() {
 
 export default {
   components: {
-    EmptyState,
     EntityCard,
     PageShell,
+    SectionBlock,
   },
   data() {
     return {
@@ -189,14 +190,14 @@ export default {
 
 <style scoped>
 .create-card {
-  margin-bottom: 24rpx;
-  padding: 24rpx;
-  border-radius: 16rpx;
-  background: #ffffff;
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
 }
 
 .form-title {
-  margin-bottom: 18rpx;
+  margin-bottom: var(--space-2);
   font-size: 30rpx;
   font-weight: 700;
 }
@@ -204,11 +205,11 @@ export default {
 .field {
   width: 100%;
   box-sizing: border-box;
-  margin-bottom: 16rpx;
-  border: 1px solid #d9dfd5;
-  border-radius: 12rpx;
+  margin-bottom: var(--space-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
   padding: 18rpx;
-  background: #ffffff;
+  background: var(--surface-color);
 }
 
 .textarea {
@@ -217,36 +218,36 @@ export default {
 
 .field-error {
   margin-bottom: 14rpx;
-  color: #9f3e32;
-  font-size: 24rpx;
+  color: var(--danger-color);
+  font-size: var(--font-size-xs);
 }
 
 .form-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16rpx;
+  gap: var(--space-2);
 }
 
 .form-actions button {
   width: 100%;
   margin: 0;
-  font-size: 26rpx;
+  font-size: var(--font-size-sm);
 }
 
 .primary-button {
-  background: #1f5c43;
-  color: #ffffff;
+  background: var(--accent-color);
+  color: var(--on-accent-color);
 }
 
 .secondary-button {
-  background: #edf1eb;
-  color: #425148;
+  background: var(--surface-subtle-color);
+  color: var(--text-secondary-color);
 }
 
 .loading-state {
-  padding: 70rpx 0;
+  padding: var(--space-5) 0;
   text-align: center;
-  color: #7a867d;
+  color: var(--muted-color);
 }
 
 .load-error {
@@ -254,15 +255,20 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 20rpx;
-  border-radius: 12rpx;
-  background: #f8ece8;
-  color: #8b4438;
+  border-radius: var(--radius-sm);
+  background: var(--danger-subtle-color);
+  color: var(--danger-color);
 }
 
 .load-error button {
   margin: 0;
-  color: #8b4438;
-  font-size: 24rpx;
+  background: transparent;
+  color: var(--danger-color);
+  font-size: var(--font-size-xs);
+}
+
+.load-error button::after {
+  border: 0;
 }
 
 /* #ifndef H5 */

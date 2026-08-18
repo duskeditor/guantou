@@ -1,6 +1,24 @@
 <template>
   <PageShell title="写法详情">
-    <template v-if="pkg">
+    <view
+      v-if="loading"
+      class="state"
+    >
+      正在加载写法…
+    </view>
+    <view
+      v-else-if="loadError"
+      class="state error"
+    >
+      <text>{{ loadError }}</text>
+      <button
+        class="state-retry"
+        @tap="refresh"
+      >
+        重试
+      </button>
+    </view>
+    <template v-else-if="pkg">
       <SectionBlock>
         <view class="name">
           {{ pkg.text }}
@@ -27,10 +45,18 @@
         />
       </SectionBlock>
     </template>
+    <EmptyState
+      v-else
+      title="没有找到这个写法"
+      description="可以回到写法图鉴重新选择。"
+      action-text="浏览写法"
+      @action="toPackages"
+    />
   </PageShell>
 </template>
 
 <script>
+import EmptyState from '@/components/EmptyState.vue';
 import EntityCard from '@/components/EntityCard.vue';
 import PageShell from '@/components/PageShell.vue';
 import SectionBlock from '@/components/SectionBlock.vue';
@@ -47,27 +73,49 @@ const packageTypeLabels = {
 
 export default {
   components: {
+    EmptyState,
     EntityCard,
     PageShell,
     SectionBlock,
   },
   data() {
-    return { pkg: null };
+    return {
+      id: 0,
+      loadError: '',
+      loading: false,
+      pkg: null,
+    };
   },
   computed: {
     packageTypeText() {
+      if (!this.pkg) return '';
       return packageTypeLabels[this.pkg.package_type] || this.pkg.package_type;
     },
   },
   async onLoad(options) {
-    this.pkg = await getPackage(options.id);
+    this.id = options.id;
+    await this.refresh();
   },
   methods: {
+    async refresh() {
+      this.loading = !this.pkg;
+      this.loadError = '';
+      try {
+        this.pkg = await getPackage(this.id);
+      } catch (error) {
+        this.loadError = '写法加载失败，请重试';
+      } finally {
+        this.loading = false;
+      }
+    },
     mandarinText(flavor) {
       return (flavor.mandarin || []).join(' / ') || '未填写普通话概念';
     },
     toFlavor(id) {
       uni.navigateTo({ url: `/pages/flavors/details?id=${id}` });
+    },
+    toPackages() {
+      uni.navigateTo({ url: '/pages/packages/index' });
     },
   },
 };
@@ -82,6 +130,28 @@ export default {
 
 .definition {
   margin-top: 14rpx;
-  color: #425148;
+  color: var(--text-secondary-color);
+}
+
+.state {
+  padding: var(--space-5) var(--space-3);
+  color: var(--muted-color);
+  text-align: center;
+}
+
+.state.error {
+  color: var(--danger-color);
+}
+
+.state-retry {
+  margin: var(--space-2) auto 0;
+  padding: 0 var(--space-3);
+  background: transparent;
+  color: var(--accent-color);
+  font-size: var(--font-size-sm);
+}
+
+.state-retry::after {
+  border: 0;
 }
 </style>

@@ -19,6 +19,13 @@
         重试
       </button>
     </view>
+    <EmptyState
+      v-else-if="notFound"
+      title="没有找到这个集盒"
+      description="它可能已被删除，或者链接有误。"
+      action-text="浏览集盒"
+      @action="toShelves"
+    />
     <template v-else-if="shelf">
       <SectionBlock>
         <view class="name">
@@ -200,6 +207,7 @@
 
 <script>
 import CanCard from '@/components/CanCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import EntityCard from '@/components/EntityCard.vue';
 import PageShell from '@/components/PageShell.vue';
 import SectionBlock from '@/components/SectionBlock.vue';
@@ -229,6 +237,7 @@ function currentUser() {
 export default {
   components: {
     CanCard,
+    EmptyState,
     EntityCard,
     PageShell,
     SectionBlock,
@@ -246,6 +255,7 @@ export default {
       id: 0,
       loadError: '',
       loading: false,
+      notFound: false,
       savingMeta: false,
       shelf: null,
       showEditor: false,
@@ -269,6 +279,7 @@ export default {
     async refresh() {
       this.loading = !this.shelf;
       this.loadError = '';
+      this.notFound = false;
       try {
         this.shelf = await getShelf(this.id);
         this.editDraft = {
@@ -276,7 +287,12 @@ export default {
           description: this.shelf.description || '',
         };
       } catch (error) {
-        this.loadError = '集盒加载失败，请重试';
+        if (Number(error.statusCode) === 404) {
+          this.shelf = null;
+          this.notFound = true;
+        } else {
+          this.loadError = '集盒加载失败，请重试';
+        }
       } finally {
         this.loading = false;
       }
@@ -360,6 +376,9 @@ export default {
     toCan(id) {
       uni.navigateTo({ url: `/pages/cans/details?id=${id}` });
     },
+    toShelves() {
+      uni.navigateTo({ url: '/pages/shelves/index' });
+    },
   },
 };
 </script>
@@ -373,18 +392,18 @@ export default {
 
 .definition {
   margin-top: 14rpx;
-  color: #425148;
+  color: var(--text-secondary-color);
   line-height: 1.5;
 }
 
 .field {
   width: 100%;
   box-sizing: border-box;
-  margin-bottom: 16rpx;
-  border: 1px solid #d9dfd5;
-  border-radius: 12rpx;
+  margin-bottom: var(--space-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
   padding: 18rpx;
-  background: #ffffff;
+  background: var(--surface-color);
 }
 
 .textarea {
@@ -394,9 +413,9 @@ export default {
 .primary-button,
 .small-button {
   margin: 0;
-  background: #1f5c43;
-  color: #ffffff;
-  font-size: 26rpx;
+  background: var(--accent-color);
+  color: var(--on-accent-color);
+  font-size: var(--font-size-sm);
 }
 
 .primary-button {
@@ -404,9 +423,9 @@ export default {
 }
 
 .search-block {
-  margin-top: 30rpx;
-  padding-top: 24rpx;
-  border-top: 1px solid #e8ebe4;
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-color);
 }
 
 .editor-label {
@@ -418,21 +437,30 @@ export default {
 .search-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 14rpx;
+  gap: var(--space-2);
 }
 
 .search-field {
   margin-bottom: 0;
+  min-height: 96rpx;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 96rpx;
+}
+
+.small-button {
+  min-height: 96rpx;
+  line-height: 96rpx;
 }
 
 .candidate {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: var(--space-2);
   margin-top: 14rpx;
-  padding: 16rpx;
-  border-radius: 12rpx;
-  background: #f6f8f4;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-subtle-color);
 }
 
 .candidate-copy {
@@ -448,7 +476,7 @@ export default {
 
 .candidate-description {
   margin-top: 6rpx;
-  color: #68766d;
+  color: var(--muted-color);
   font-size: 23rpx;
 }
 
@@ -460,13 +488,13 @@ export default {
 }
 
 .candidate-button {
-  color: #1f5c43;
+  color: var(--accent-color);
 }
 
 .content-row {
   display: flex;
   align-items: center;
-  gap: 12rpx;
+  gap: var(--space-1);
 }
 
 .content-card {
@@ -475,13 +503,13 @@ export default {
 }
 
 .remove-button {
-  color: #9f3e32;
+  color: var(--danger-color);
 }
 
 .loading-state {
-  padding: 70rpx 0;
+  padding: var(--space-5) 0;
   text-align: center;
-  color: #7a867d;
+  color: var(--muted-color);
 }
 
 .load-error {
@@ -489,15 +517,20 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 20rpx;
-  border-radius: 12rpx;
-  background: #f8ece8;
-  color: #8b4438;
+  border-radius: var(--radius-sm);
+  background: var(--danger-subtle-color);
+  color: var(--danger-color);
 }
 
 .load-error button {
   margin: 0;
-  color: #8b4438;
-  font-size: 24rpx;
+  background: transparent;
+  color: var(--danger-color);
+  font-size: var(--font-size-xs);
+}
+
+.load-error button::after {
+  border: 0;
 }
 
 /* #ifdef H5 */
