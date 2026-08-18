@@ -131,8 +131,13 @@
         />
       </SectionBlock>
 
-      <SectionBlock title="补一张铭牌">
+      <SectionBlock
+        title="补一张铭牌"
+        :action-text="nameplateComposerOpen ? '收起' : '展开'"
+        @action="toggleNameplateComposer"
+      >
         <NameplateComposer
+          v-if="nameplateComposerOpen"
           ref="composer"
           :focus="nameplateInputFocused"
           :submitting="submittingNameplate"
@@ -309,6 +314,7 @@ export default {
       commentSubmitting: false,
       commentText: '',
       likeBusy: false,
+      nameplateComposerOpen: false,
       nameplateInputFocused: false,
       submittingNameplate: false,
       transitionBusy: '',
@@ -332,11 +338,9 @@ export default {
   },
   async onLoad(options) {
     this.id = options.id;
-    await Promise.all([
-      this.refresh(),
-      this.loadComments(),
-      this.loadClaimOptions(),
-    ]);
+    await this.refresh();
+    await this.loadComments();
+    await this.loadClaimOptions();
   },
   onShow() {
     this.currentUser = currentSessionUser();
@@ -480,6 +484,15 @@ export default {
       }
     },
     focusNameplateInput() {
+      this.nameplateComposerOpen = true;
+      this.nameplateInputFocused = false;
+      this.$nextTick(() => {
+        this.nameplateInputFocused = true;
+      });
+    },
+    toggleNameplateComposer() {
+      this.nameplateComposerOpen = !this.nameplateComposerOpen;
+      if (!this.nameplateComposerOpen) return;
       this.nameplateInputFocused = false;
       this.$nextTick(() => {
         this.nameplateInputFocused = true;
