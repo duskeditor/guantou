@@ -48,7 +48,10 @@
       class="error-state"
     >
       <text>{{ errorMessage }}</text>
-      <button @tap="refresh">
+      <button
+        class="error-retry"
+        @tap="refresh"
+      >
         重试
       </button>
     </view>
@@ -64,12 +67,13 @@
       @open="toDetail(item.id)"
     />
 
-    <EmptyState
+    <SectionBlock
       v-if="showEmpty"
-      title="没有找到写法"
-      description="换个关键词或类型看看，也可以回到义项图鉴继续浏览。"
-      action-text="浏览全部"
-      @action="resetFilters"
+      :empty="true"
+      empty-title="没有找到写法"
+      empty-description="换个关键词或类型看看，也可以回到义项图鉴继续浏览。"
+      empty-action-text="浏览全部"
+      @empty-action="resetFilters"
     />
     <uni-load-more
       v-if="packages.length"
@@ -79,9 +83,9 @@
 </template>
 
 <script>
-import EmptyState from '@/components/EmptyState.vue';
 import EntityCard from '@/components/EntityCard.vue';
 import PageShell from '@/components/PageShell.vue';
+import SectionBlock from '@/components/SectionBlock.vue';
 import { listPackages } from '@/services/guantou';
 import { goPackageDetail } from '@/services/navigation';
 
@@ -105,9 +109,9 @@ export function packageListParams(search, packageType, page = 1) {
 
 export default {
   components: {
-    EmptyState,
     EntityCard,
     PageShell,
+    SectionBlock,
   },
   data() {
     return {
@@ -151,7 +155,7 @@ export default {
         this.packages = response.results || response || [];
         this.loadingStatus = response.next ? 'more' : 'noMore';
       } catch (error) {
-        this.errorMessage = '写法加载失败，请重试';
+        this.errorMessage = '写法加载没有成功，请稍后再试。';
         this.loadingStatus = 'more';
       } finally {
         this.initialLoading = false;
@@ -173,7 +177,7 @@ export default {
         this.packages = this.packages.concat(additions);
         this.loadingStatus = response.next ? 'more' : 'noMore';
       } catch (error) {
-        this.errorMessage = '加载更多失败，请稍后重试';
+        this.errorMessage = '加载更多没有成功，请稍后再试。';
         this.loadingStatus = 'more';
       }
     },
@@ -195,65 +199,118 @@ export default {
 
 <style scoped>
 .filters {
-  margin-bottom: 24rpx;
+  margin-bottom: var(--space-3);
 }
 
 .search-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 16rpx;
+  gap: var(--space-2);
+}
+
+.search-input,
+.picker-field,
+.small-button {
+  min-height: 96rpx;
 }
 
 .search-input,
 .picker-field {
   box-sizing: border-box;
-  border: 1px solid #d9dfd5;
-  background: #ffffff;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
 }
 
 .search-input {
-  border-radius: 999rpx;
-  padding: 18rpx 24rpx;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  line-height: 96rpx;
 }
 
 .picker-field {
-  margin-top: 16rpx;
-  border-radius: 12rpx;
-  padding: 18rpx 22rpx;
-  color: #425148;
+  margin-top: var(--space-2);
+  padding: 0 22rpx;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary-color);
+  line-height: 96rpx;
 }
 
 .small-button {
   margin: 0;
-  border-radius: 999rpx;
-  background: #1f5c43;
-  color: #ffffff;
-  font-size: 26rpx;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--accent-color);
+  color: var(--on-accent-color);
+  font-size: var(--font-size-sm);
+  line-height: 96rpx;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease,
+    background-color 180ms ease;
+}
+
+.small-button:active {
+  opacity: 0.82;
+  transform: scale(0.98);
+}
+
+.small-button::after {
+  border: 0;
+}
+
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .skeleton-card {
   height: 170rpx;
-  margin-bottom: 18rpx;
-  border-radius: 12rpx;
-  background: #e9ede6;
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle-color);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
 }
 
 .error-state {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18rpx;
-  margin-bottom: 18rpx;
-  padding: 20rpx;
-  border-radius: 12rpx;
-  background: #f8ece8;
-  color: #8b4438;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--danger-subtle-color);
+  color: var(--danger-color);
 }
 
-.error-state button {
-  flex: 0 0 auto;
+.error-retry {
   margin: 0;
-  color: #8b4438;
-  font-size: 24rpx;
+  padding: 0 var(--space-3);
+  background: transparent;
+  color: var(--danger-color);
+  font-size: var(--font-size-sm);
+}
+
+.error-retry::after {
+  border: 0;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .small-button {
+    transition: none;
+  }
+  .skeleton-card {
+    animation: none;
+  }
 }
 </style>

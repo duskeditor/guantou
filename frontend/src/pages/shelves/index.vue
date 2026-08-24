@@ -50,16 +50,23 @@
 
     <view
       v-if="loading"
-      class="loading-state"
+      class="skeleton-list"
     >
-      正在加载集盒…
+      <view
+        v-for="index in 3"
+        :key="index"
+        class="skeleton-card"
+      />
     </view>
     <view
       v-else-if="loadError"
-      class="load-error"
+      class="error-state"
     >
       <text>{{ loadError }}</text>
-      <button @tap="refresh">
+      <button
+        class="error-retry"
+        @tap="refresh"
+      >
         重试
       </button>
     </view>
@@ -74,21 +81,22 @@
         :item="item"
         @open="toDetail(item.id)"
       />
-      <EmptyState
+      <SectionBlock
         v-if="!shelves.length"
-        title="还没有集盒"
-        description="创建一个集盒，按主题收纳义项和精选罐头。"
-        action-text="创建第一个集盒"
-        @action="openCreate"
+        :empty="true"
+        empty-title="还没有集盒"
+        empty-description="创建一个集盒，按主题收纳义项和精选罐头。"
+        empty-action-text="创建第一个集盒"
+        @empty-action="openCreate"
       />
     </template>
   </AppShell>
 </template>
 
 <script>
-import EmptyState from '@/components/EmptyState.vue';
-import EntityCard from '@/components/EntityCard.vue';
 import AppShell from '@/components/AppShell.vue';
+import EntityCard from '@/components/EntityCard.vue';
+import SectionBlock from '@/components/SectionBlock.vue';
 import { requireAuth } from '@/services/authGuard';
 import { createShelf, listShelves } from '@/services/guantou';
 import { goShelfDetail } from '@/services/navigation';
@@ -105,9 +113,9 @@ function blankDraft() {
 
 export default {
   components: {
-    EmptyState,
-    EntityCard,
     AppShell,
+    EntityCard,
+    SectionBlock,
   },
   data() {
     return {
@@ -132,7 +140,7 @@ export default {
         const response = await listShelves();
         this.shelves = response.results || response || [];
       } catch (error) {
-        this.loadError = '集盒加载失败，请重试';
+        this.loadError = '集盒加载没有成功，请稍后再试。';
       } finally {
         this.loading = false;
       }
@@ -191,14 +199,14 @@ export default {
 
 <style scoped>
 .create-card {
-  margin-bottom: 24rpx;
-  padding: 24rpx;
-  border-radius: 16rpx;
-  background: #ffffff;
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
 }
 
 .form-title {
-  margin-bottom: 18rpx;
+  margin-bottom: var(--space-2);
   font-size: 30rpx;
   font-weight: 700;
 }
@@ -206,11 +214,11 @@ export default {
 .field {
   width: 100%;
   box-sizing: border-box;
-  margin-bottom: 16rpx;
-  border: 1px solid #d9dfd5;
-  border-radius: 12rpx;
+  margin-bottom: var(--space-2);
   padding: 18rpx;
-  background: #ffffff;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
 }
 
 .textarea {
@@ -219,57 +227,92 @@ export default {
 
 .field-error {
   margin-bottom: 14rpx;
-  color: #9f3e32;
-  font-size: 24rpx;
+  color: var(--danger-color);
+  font-size: var(--font-size-xs);
 }
 
 .form-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16rpx;
+  gap: var(--space-2);
 }
 
 .form-actions button {
   width: 100%;
   margin: 0;
-  font-size: 26rpx;
+  font-size: var(--font-size-sm);
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.form-actions button:active {
+  opacity: 0.82;
+  transform: scale(0.99);
 }
 
 .primary-button {
-  background: #1f5c43;
-  color: #ffffff;
+  background: var(--accent-color);
+  color: var(--on-accent-color);
 }
 
 .secondary-button {
-  background: #edf1eb;
-  color: #425148;
+  background: var(--surface-subtle-color);
+  color: var(--text-secondary-color);
 }
 
-.loading-state {
-  padding: 70rpx 0;
-  text-align: center;
-  color: #7a867d;
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.load-error {
+.skeleton-card {
+  height: 170rpx;
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle-color);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.error-state {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20rpx;
-  border-radius: 12rpx;
-  background: #f8ece8;
-  color: #8b4438;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--danger-subtle-color);
+  color: var(--danger-color);
 }
 
-.load-error button {
+.error-retry {
   margin: 0;
-  color: #8b4438;
-  font-size: 24rpx;
+  padding: 0 var(--space-3);
+  background: transparent;
+  color: var(--danger-color);
+  font-size: var(--font-size-sm);
 }
 
-/* #ifndef H5 */
-.field {
-  font-size: 28rpx;
+.error-retry::after {
+  border: 0;
 }
-/* #endif */
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form-actions button {
+    transition: none;
+  }
+  .skeleton-card {
+    animation: none;
+  }
+}
 </style>

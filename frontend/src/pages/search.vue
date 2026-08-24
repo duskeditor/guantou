@@ -1,25 +1,202 @@
 <template>
-  <SearchPanel
-    v-model="keywords"
-    :hot-tags="hotTags"
-    :history-list="historyList"
-    :suggestions="suggestions"
-    :results="results"
-    :has-searched="hasSearched"
-    :loading="searchLoading"
-    :error-message="searchError"
-    @search="search"
-    @suggest="suggest"
-    @update:model-value="onKeywordInput"
-    @open="openItem"
-    @open-can="openCan"
-    @create-can="toCreateCan"
-    @back="goBack"
-  />
+  <PageShell
+    title="搜索"
+    :scroll="true"
+  >
+    <view class="search-row">
+      <input
+        :value="keywords"
+        class="search-input"
+        placeholder="搜索义项、写法、罐头"
+        :focus="true"
+        confirm-type="search"
+        @input="onKeywordInput"
+        @confirm="submitSearch"
+      >
+      <button
+        class="search-button"
+        @tap="submitSearch"
+      >
+        搜索
+      </button>
+    </view>
+
+    <view class="search-tabs">
+      <view
+        v-for="tab in tabs"
+        :key="tab.value"
+        class="tab"
+        :class="{ active: activeTab === tab.value }"
+        @tap="selectTab(tab.value)"
+      >
+        {{ tab.label }}
+      </view>
+    </view>
+
+    <view v-if="!hasSearched">
+      <SectionBlock
+        v-if="suggestions.length"
+        title="联想"
+      >
+        <EntityCard
+          v-for="item in suggestions"
+          :key="`${item.scope}-${item.id}`"
+          :type="item.type"
+          :title="item.title"
+          :description="item.description"
+          :meta="item.meta"
+          :item="item"
+          @open="openItem"
+        />
+      </SectionBlock>
+
+      <view
+        v-if="hotTags.length"
+        class="quick-section"
+      >
+        <view class="quick-title">
+          热门搜索
+        </view>
+        <view class="tag-row">
+          <text
+            v-for="tag in hotTags"
+            :key="tag"
+            class="tag"
+            @tap="pickKeyword(tag)"
+          >
+            {{ tag }}
+          </text>
+        </view>
+      </view>
+
+      <view
+        v-if="historyList.length"
+        class="quick-section"
+      >
+        <view class="quick-title">
+          搜索历史
+        </view>
+        <view class="tag-row">
+          <text
+            v-for="item in historyList"
+            :key="item"
+            class="tag"
+            @tap="pickKeyword(item)"
+          >
+            {{ item }}
+          </text>
+        </view>
+      </view>
+
+      <EmptyState
+        v-if="!historyList.length && !suggestions.length"
+        title="输入一个概念或写法"
+        description="比如月亮、行、杀，也可以直接搜某张铭牌。"
+      />
+    </view>
+
+    <view v-else>
+      <EmptyState
+        v-if="searchError"
+        title="搜索没有成功"
+        :description="searchError"
+        action-text="再试一次"
+        @action="submitSearch"
+      />
+      <view
+        v-else-if="searchLoading"
+        class="skeleton-list"
+      >
+        <view
+          v-for="index in 3"
+          :key="index"
+          class="skeleton-card"
+        />
+      </view>
+      <template v-else-if="hasVisibleResults">
+        <SectionBlock
+          v-if="showCans"
+          title="罐头"
+        >
+          <CanCard
+            v-for="item in visibleItems('cans')"
+            :key="`can-${item.id}`"
+            :can="item"
+            @open="openCan"
+          />
+          <button
+            v-if="hasMore('cans')"
+            class="expand-button"
+            @tap="toggleSection('cans')"
+          >
+            {{ expandedSections.cans ? '收起' : `展开剩余 ${remainingCount('cans')} 条` }}
+          </button>
+        </SectionBlock>
+
+        <SectionBlock
+          v-if="showFlavors"
+          title="义项"
+        >
+          <EntityCard
+            v-for="item in visibleItems('flavors')"
+            :key="`flavor-${item.id}`"
+            type="义项"
+            :title="item.name"
+            :description="item.definition"
+            :meta="flavorMeta(item)"
+            :item="{ ...item, scope: 'flavors' }"
+            @open="openItem"
+          />
+          <button
+            v-if="hasMore('flavors')"
+            class="expand-button"
+            @tap="toggleSection('flavors')"
+          >
+            {{ expandedSections.flavors ? '收起' : `展开剩余 ${remainingCount('flavors')} 条` }}
+          </button>
+        </SectionBlock>
+
+        <SectionBlock
+          v-if="showPackages"
+          title="写法"
+        >
+          <EntityCard
+            v-for="item in visibleItems('packages')"
+            :key="`package-${item.id}`"
+            type="写法"
+            :title="item.text"
+            description="查看这个写法关联的义项"
+            :meta="packageMeta(item)"
+            :item="{ ...item, scope: 'packages' }"
+            @open="openItem"
+          />
+          <button
+            v-if="hasMore('packages')"
+            class="expand-button"
+            @tap="toggleSection('packages')"
+          >
+            {{ expandedSections.packages ? '收起' : `展开剩余 ${remainingCount('packages')} 条` }}
+          </button>
+        </SectionBlock>
+      </template>
+      <SectionBlock
+        v-else
+        :empty="true"
+        empty-title="这个栏目暂时没有结果"
+        :empty-description="activeTab === 'all' ? '换个写法试试，或者先装一罐。' : '可以切换到全部看看其他类型的结果。'"
+        :empty-action-text="activeTab === 'all' ? '装一罐' : '查看全部'"
+        @empty-action="activeTab === 'all' ? toCreateCan() : selectTab('all')"
+      />
+    </view>
+  </PageShell>
 </template>
 
 <script>
-import SearchPanel from '@/components/SearchPanel.vue';
+import CanCard from '@/components/CanCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import EntityCard from '@/components/EntityCard.vue';
+import PageShell from '@/components/PageShell.vue';
+import SectionBlock from '@/components/SectionBlock.vue';
 import { APP_NAME } from '@/const/branding';
 import {
   listHotSearches,
@@ -27,13 +204,14 @@ import {
   suggestGuantou,
 } from '@/services/guantou';
 import {
-  goBack,
   goCanDetail,
   goCreateCan,
   goNameplateDetail,
   openPage,
 } from '@/services/navigation';
 import { defaultMessage } from '@/services/shareMessages';
+
+const SUGGEST_DEBOUNCE_MS = 300;
 
 function emptyResults() {
   return {
@@ -67,10 +245,20 @@ function flattenSuggestions(response) {
 
 export default {
   components: {
-    SearchPanel,
+    CanCard,
+    EmptyState,
+    EntityCard,
+    PageShell,
+    SectionBlock,
   },
   data() {
     return {
+      activeTab: 'all',
+      expandedSections: {
+        cans: false,
+        flavors: false,
+        packages: false,
+      },
       hasSearched: false,
       hotTags: [],
       hotTagsLoaded: false,
@@ -79,10 +267,39 @@ export default {
       lastSearchedKeyword: '',
       suggestions: [],
       suggestRequestId: 0,
+      suggestTimer: null,
       searchLoading: false,
       searchError: '',
       results: emptyResults(),
+      tabs: [
+        { label: '全部', value: 'all' },
+        { label: '罐头', value: 'cans' },
+        { label: '义项', value: 'flavors' },
+        { label: '写法', value: 'packages' },
+      ],
     };
+  },
+  computed: {
+    totalResults() {
+      return (this.results.flavors || []).length
+        + (this.results.packages || []).length
+        + (this.results.cans || []).length;
+    },
+    showCans() {
+      return this.results.cans.length
+        && (this.activeTab === 'all' || this.activeTab === 'cans');
+    },
+    showFlavors() {
+      return this.results.flavors.length
+        && (this.activeTab === 'all' || this.activeTab === 'flavors');
+    },
+    showPackages() {
+      return this.results.packages.length
+        && (this.activeTab === 'all' || this.activeTab === 'packages');
+    },
+    hasVisibleResults() {
+      return this.showCans || this.showFlavors || this.showPackages;
+    },
   },
   onLoad(option) {
     this.loadHistory();
@@ -92,6 +309,9 @@ export default {
       this.search(this.keywords);
     }
   },
+  onUnload() {
+    this.clearSuggestTimer();
+  },
   onShareAppMessage() {
     return {
       title: `${APP_NAME}：${this.keywords || '搜索'}`,
@@ -100,6 +320,11 @@ export default {
     };
   },
   methods: {
+    clearSuggestTimer() {
+      if (!this.suggestTimer) return;
+      clearTimeout(this.suggestTimer);
+      this.suggestTimer = null;
+    },
     async loadHotTags() {
       if (this.hotTagsLoaded) return;
       this.hotTagsLoaded = true;
@@ -110,9 +335,6 @@ export default {
         this.hotTags = [];
       }
     },
-    goBack() {
-      goBack();
-    },
     async search(keyword = this.keywords) {
       const search = String(keyword || '').trim();
       if (!search) {
@@ -121,6 +343,7 @@ export default {
       }
       this.keywords = search;
       this.suggestRequestId += 1;
+      this.clearSuggestTimer();
       this.searchLoading = true;
       this.searchError = '';
       this.results = emptyResults();
@@ -131,7 +354,7 @@ export default {
         this.lastSearchedKeyword = search;
         this.recordHistory(search);
       } catch (error) {
-        this.searchError = '搜索失败，请稍后重试';
+        this.searchError = '网络开小差了，请稍后再试。';
       } finally {
         this.searchLoading = false;
       }
@@ -149,16 +372,53 @@ export default {
       }
     },
     onKeywordInput(value) {
-      const keyword = String(value || '').trim();
+      const keyword = String(value?.detail?.value ?? value ?? '').trim();
+      this.keywords = String(value?.detail?.value ?? value ?? '').trim();
       if (!keyword) {
+        this.clearSuggestTimer();
         this.suggestRequestId += 1;
         this.suggestions = [];
+      } else {
+        this.queueSuggest(keyword);
       }
       if (!this.hasSearched || keyword === this.lastSearchedKeyword) return;
       this.suggestRequestId += 1;
       this.hasSearched = false;
       this.searchError = '';
       this.results = emptyResults();
+    },
+    queueSuggest(value) {
+      this.clearSuggestTimer();
+      const keyword = String(value || '').trim();
+      if (!keyword) return;
+      this.suggestTimer = setTimeout(() => {
+        this.suggest(keyword);
+      }, SUGGEST_DEBOUNCE_MS);
+    },
+    submitSearch() {
+      this.search(this.keywords);
+    },
+    pickKeyword(keyword) {
+      this.keywords = keyword;
+      this.search(keyword);
+    },
+    selectTab(tab) {
+      this.activeTab = tab;
+    },
+    visibleItems(section) {
+      if (this.activeTab !== 'all' || this.expandedSections[section]) {
+        return this.results[section] || [];
+      }
+      return (this.results[section] || []).slice(0, 1);
+    },
+    hasMore(section) {
+      return this.activeTab === 'all' && (this.results[section] || []).length > 1;
+    },
+    remainingCount(section) {
+      return Math.max(0, (this.results[section] || []).length - 1);
+    },
+    toggleSection(section) {
+      this.expandedSections[section] = !this.expandedSections[section];
     },
     loadHistory() {
       try {
@@ -176,6 +436,12 @@ export default {
         key: 'search_history',
         data: JSON.stringify(this.historyList),
       });
+    },
+    flavorMeta(item) {
+      return `${(item.pronunciations || []).length} 个读音 · ${(item.package_links || []).length} 个写法`;
+    },
+    packageMeta(item) {
+      return `${(item.flavors || []).length} 个义项 · ${item.package_type || 'uncertain'}`;
     },
     openCan(id) {
       goCanDetail(id);
@@ -201,3 +467,178 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.search-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.search-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.tab {
+  padding: 14rpx 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary-color);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.tab.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: var(--on-accent-color);
+  font-weight: 700;
+}
+
+.tab:active {
+  opacity: 0.8;
+  transform: scale(0.97);
+}
+
+.search-input,
+.search-button {
+  min-height: 96rpx;
+  line-height: 96rpx;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease,
+    background-color 180ms ease;
+}
+
+.search-input {
+  box-sizing: border-box;
+  padding: 0 var(--space-3);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-base);
+}
+
+.search-button {
+  margin: 0;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--accent-color);
+  color: var(--on-accent-color);
+  font-size: var(--font-size-sm);
+}
+
+.search-button:active {
+  opacity: 0.82;
+  transform: scale(0.98);
+}
+
+.search-button::after {
+  border: 0;
+}
+
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.skeleton-card {
+  height: 170rpx;
+  border-radius: var(--radius-md);
+  background: var(--surface-subtle-color);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.expand-button {
+  width: 100%;
+  margin: var(--space-2) 0 0;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--accent-color);
+  border-radius: var(--radius-pill);
+  background: var(--accent-color);
+  color: var(--on-accent-color);
+  font-size: var(--font-size-sm);
+  line-height: 64rpx;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease,
+    background-color 180ms ease;
+}
+
+.expand-button:active {
+  opacity: 0.82;
+  transform: scale(0.99);
+}
+
+.expand-button::after {
+  border: 0;
+}
+
+.quick-section {
+  margin-bottom: var(--space-4);
+}
+
+.quick-title {
+  margin-bottom: var(--space-2);
+  color: var(--text-secondary-color);
+  font-weight: 700;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tag {
+  padding: 12rpx 20rpx;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  color: var(--accent-color);
+  font-size: var(--font-size-sm);
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease,
+    background-color 180ms ease;
+}
+
+.tag:active {
+  opacity: 0.78;
+  transform: scale(0.97);
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-input,
+  .search-button,
+  .expand-button,
+  .tab,
+  .tag {
+    transition: none;
+  }
+  .skeleton-card {
+    animation: none;
+  }
+}
+</style>
