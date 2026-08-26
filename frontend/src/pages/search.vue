@@ -143,7 +143,7 @@
             type="义项"
             :title="item.name"
             :description="item.definition"
-            :meta="flavorMeta(item)"
+            :meta="flavorGroupMeta(item)"
             :item="{ ...item, scope: 'flavors' }"
             @open="openItem"
           />
@@ -243,6 +243,19 @@ function flattenSuggestions(response) {
   }));
 }
 
+function flavorGroupKey(item) {
+  return `${String(item.name || '').trim()}||${String(item.definition || '').trim()}`;
+}
+
+function uniqueById(items) {
+  const seen = new Set();
+  return (items || []).filter((item) => {
+    if (!item?.id || seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
 export default {
   components: {
     CanCard,
@@ -296,6 +309,25 @@ export default {
     showPackages() {
       return this.results.packages.length
         && (this.activeTab === 'all' || this.activeTab === 'packages');
+    },
+    groupedFlavors() {
+      const groups = new Map();
+      (this.results.flavors || []).forEach((flavor) => {
+        const key = flavorGroupKey(flavor);
+        if (!groups.has(key)) {
+          groups.set(key, {
+            id: flavor.id,
+            name: flavor.name,
+            definition: flavor.definition,
+            pronunciations: [],
+            package_links: [],
+          });
+        }
+        const group = groups.get(key);
+        group.pronunciations = uniqueById(group.pronunciations.concat(flavor.pronunciations || []));
+        group.package_links = uniqueById(group.package_links.concat(flavor.package_links || []));
+      });
+      return [...groups.values()];
     },
     hasVisibleResults() {
       return this.showCans || this.showFlavors || this.showPackages;
@@ -406,15 +438,27 @@ export default {
       this.activeTab = tab;
     },
     visibleItems(section) {
+      if (section === 'flavors') {
+        if (this.activeTab !== 'all' || this.expandedSections.flavors) {
+          return this.groupedFlavors;
+        }
+        return this.groupedFlavors.slice(0, 1);
+      }
       if (this.activeTab !== 'all' || this.expandedSections[section]) {
         return this.results[section] || [];
       }
       return (this.results[section] || []).slice(0, 1);
     },
     hasMore(section) {
+      if (section === 'flavors') {
+        return this.activeTab === 'all' && this.groupedFlavors.length > 1;
+      }
       return this.activeTab === 'all' && (this.results[section] || []).length > 1;
     },
     remainingCount(section) {
+      if (section === 'flavors') {
+        return Math.max(0, this.groupedFlavors.length - 1);
+      }
       return Math.max(0, (this.results[section] || []).length - 1);
     },
     toggleSection(section) {
@@ -439,6 +483,19 @@ export default {
     },
     flavorMeta(item) {
       return `${(item.pronunciations || []).length} 个读音 · ${(item.package_links || []).length} 个写法`;
+    },
+    flavorGroupMeta(item) {
+      const parts = (item.pronunciations || []).map((pronunciation) => {
+        const dialect = pronunciation.dialect?.qualified_code || '未标方言点';
+        const reading = pronunciation.surface_romanization
+          || pronunciation.base_romanization
+          || pronunciation.ipa
+          || '未标音';
+        return `${dialect} ${reading}`;
+      });
+      const summary = parts.length ? parts.join(' · ') : '';
+      const writeCount = (item.package_links || []).length;
+      return [summary, writeCount ? `${writeCount} 个写法` : ''].filter(Boolean).join(' · ');
     },
     packageMeta(item) {
       return `${(item.flavors || []).length} 个义项 · ${item.package_type || 'uncertain'}`;
