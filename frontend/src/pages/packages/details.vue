@@ -34,12 +34,12 @@
         empty-title="暂无关联义项"
       >
         <EntityCard
-          v-for="flavor in pkg.flavors"
+          v-for="flavor in groupedFlavors"
           :key="flavor.id"
           type="义项"
           :title="flavor.name"
           :description="flavor.definition || '暂无释义'"
-          :meta="mandarinText(flavor)"
+          :meta="flavorGroupMeta(flavor)"
           :item="flavor"
           @open="toFlavor(flavor.id)"
         />
@@ -72,6 +72,10 @@ const packageTypeLabels = {
   uncertain: '不确定',
 };
 
+function flavorGroupKey(item) {
+  return `${String(item.name || '').trim()}||${String(item.definition || '').trim()}`;
+}
+
 export default {
   components: {
     EmptyState,
@@ -88,6 +92,23 @@ export default {
     };
   },
   computed: {
+    groupedFlavors() {
+      const groups = new Map();
+      (this.pkg?.flavors || []).forEach((flavor) => {
+        const key = flavorGroupKey(flavor);
+        if (!groups.has(key)) {
+          groups.set(key, {
+            id: flavor.id,
+            name: flavor.name,
+            definition: flavor.definition,
+            mandarin: [],
+          });
+        }
+        const group = groups.get(key);
+        group.mandarin = [...new Set(group.mandarin.concat(flavor.mandarin || []))];
+      });
+      return [...groups.values()];
+    },
     packageTypeText() {
       if (!this.pkg) return '';
       return packageTypeLabels[this.pkg.package_type] || this.pkg.package_type;
@@ -108,6 +129,9 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+    flavorGroupMeta(flavor) {
+      return (flavor.mandarin || []).join(' / ') || '未填写普通话概念';
     },
     mandarinText(flavor) {
       return (flavor.mandarin || []).join(' / ') || '未填写普通话概念';

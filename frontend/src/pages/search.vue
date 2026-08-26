@@ -7,7 +7,7 @@
       <input
         :value="keywords"
         class="search-input"
-        placeholder="搜索义项、写法、罐头"
+        placeholder="搜索罐头、铭牌、义项、写法"
         :focus="true"
         confirm-type="search"
         @input="onKeywordInput"
@@ -134,19 +134,73 @@
         </SectionBlock>
 
         <SectionBlock
+          v-if="showNameplates"
+          title="铭牌"
+        >
+          <EntityCard
+            v-for="item in visibleItems('nameplates')"
+            :key="`nameplate-${item.id}`"
+            type="铭牌"
+            :title="item.display_text || item.text_content || '未命名铭牌'"
+            :description="item.definition || item.flavor?.definition || '暂无释义'"
+            :meta="nameplateMeta(item)"
+            :item="{ ...item, scope: 'nameplates' }"
+            @open="openItem"
+          />
+          <button
+            v-if="hasMore('nameplates')"
+            class="expand-button"
+            @tap="toggleSection('nameplates')"
+          >
+            {{ expandedSections.nameplates ? '收起' : `展开剩余 ${remainingCount('nameplates')} 条` }}
+          </button>
+        </SectionBlock>
+
+        <SectionBlock
           v-if="showFlavors"
           title="义项"
         >
-          <EntityCard
+          <view
             v-for="item in visibleItems('flavors')"
             :key="`flavor-${item.id}`"
-            type="义项"
-            :title="item.name"
-            :description="item.definition"
-            :meta="flavorGroupMeta(item)"
-            :item="{ ...item, scope: 'flavors' }"
-            @open="openItem"
-          />
+            class="flavor-result"
+            @tap="openItem({ ...item, scope: 'flavors' })"
+          >
+            <view class="flavor-result__type">
+              义项
+            </view>
+            <view class="flavor-result__head">
+              <view class="flavor-result__title">
+                {{ item.name }}
+              </view>
+              <view
+                v-if="item.package_links.length > 1"
+                class="flavor-result__count"
+              >
+                等 {{ item.package_links.length - 1 }} 个写法
+              </view>
+            </view>
+            <view class="flavor-result__definition">
+              {{ item.definition }}
+            </view>
+            <view class="flavor-result__meta">
+              <view
+                v-for="pronunciation in visibleFlavorPronunciations(item)"
+                :key="`${item.id}-${pronunciation.id}`"
+                class="flavor-result__pronunciation"
+              >
+                <text>{{ pronunciation.dialect?.qualified_code || '未标方言点' }}</text>
+                <text>{{ pronunciationText(pronunciation) }}</text>
+              </view>
+              <button
+                v-if="item.pronunciations.length > 2"
+                class="flavor-more-button"
+                @tap="toggleFlavorPronunciations(item)"
+              >
+                {{ flavorPronunciationToggleText(item) }}
+              </button>
+            </view>
+          </view>
           <button
             v-if="hasMore('flavors')"
             class="expand-button"
@@ -176,29 +230,6 @@
             @tap="toggleSection('packages')"
           >
             {{ expandedSections.packages ? '收起' : `展开剩余 ${remainingCount('packages')} 条` }}
-          </button>
-        </SectionBlock>
-
-        <SectionBlock
-          v-if="showNameplates"
-          title="铭牌"
-        >
-          <EntityCard
-            v-for="item in visibleItems('nameplates')"
-            :key="`nameplate-${item.id}`"
-            type="铭牌"
-            :title="item.display_text || item.text_content || '未命名铭牌'"
-            :description="item.definition || item.flavor?.definition || '暂无释义'"
-            :meta="nameplateMeta(item)"
-            :item="{ ...item, scope: 'nameplates' }"
-            @open="openItem"
-          />
-          <button
-            v-if="hasMore('nameplates')"
-            class="expand-button"
-            @tap="toggleSection('nameplates')"
-          >
-            {{ expandedSections.nameplates ? '收起' : `展开剩余 ${remainingCount('nameplates')} 条` }}
           </button>
         </SectionBlock>
       </template>
@@ -296,6 +327,7 @@ export default {
         nameplates: false,
         packages: false,
       },
+      expandedFlavorPronunciations: [],
       hasSearched: false,
       hotTags: [],
       hotTagsLoaded: false,
@@ -336,7 +368,7 @@ export default {
         && (this.activeTab === 'all' || this.activeTab === 'packages');
     },
     showNameplates() {
-      return this.activeTab === 'all' && this.results.nameplates.length;
+      return this.activeTab === 'all' && (this.results.nameplates || []).length;
     },
     groupedFlavors() {
       const groups = new Map();
@@ -347,11 +379,13 @@ export default {
             id: flavor.id,
             name: flavor.name,
             definition: flavor.definition,
+            flavor_ids: [flavor.id],
             pronunciations: [],
             package_links: [],
           });
         }
         const group = groups.get(key);
+        if (!group.flavor_ids.includes(flavor.id)) group.flavor_ids.push(flavor.id);
         group.pronunciations = uniqueById(group.pronunciations.concat(flavor.pronunciations || []));
         group.package_links = uniqueById(group.package_links.concat(flavor.package_links || []));
       });
@@ -525,6 +559,49 @@ export default {
       const writeCount = (item.package_links || []).length;
       return [summary, writeCount ? `${writeCount} 个写法` : ''].filter(Boolean).join(' · ');
     },
+    pronunciationText(pronunciation) {
+      return pronunciation.surface_romanization
+        || pronunciation.base_romanization
+        || pronunciation.ipa
+        || '未标音';
+    },
+    visibleFlavorPronunciations(item) {
+      if (
+        (item.pronunciations || []).length > 2
+        && !this.expandedFlavorPronunciations.includes(item.id)
+      ) {
+        return (item.pronunciations || []).slice(0, 2);
+      }
+      return item.pronunciations || [];
+    },
+    toggleFlavorPronunciations(item) {
+      if (this.expandedFlavorPronunciations.includes(item.id)) {
+        this.expandedFlavorPronunciations = this.expandedFlavorPronunciations.filter(
+          (id) => id !== item.id,
+        );
+      } else {
+        this.expandedFlavorPronunciations = [
+          ...this.expandedFlavorPronunciations,
+          item.id,
+        ];
+      }
+    },
+    flavorPronunciationToggleText(item) {
+      if (this.expandedFlavorPronunciations.includes(item.id)) return '收起';
+      return `展开剩余 ${item.pronunciations.length - 2} 个读音`;
+    },
+    visiblePackageTexts(item) {
+      const links = (item.package_links || []);
+      const visible = links.length > 2 ? links.slice(0, 2) : links;
+      return visible
+        .map((link) => link.package?.text || `写法 ${link.package?.id}`)
+        .join('、');
+    },
+    packageTexts(item) {
+      return (item.package_links || [])
+        .map((link) => link.package?.text || `写法 ${link.package?.id}`)
+        .join('、');
+    },
     packageMeta(item) {
       return `${(item.flavors || []).length} 个义项 · ${item.package_type || 'uncertain'}`;
     },
@@ -557,8 +634,12 @@ export default {
         goNameplateDetail(item.id);
         return;
       }
+      if (item.scope === 'flavors') {
+        const ids = item.flavor_ids || [item.id];
+        openPage(`/pages/flavors/details?id=${ids[0]}&ids=${ids.join(',')}`);
+        return;
+      }
       const urls = {
-        flavors: `/pages/flavors/details?id=${item.id}`,
         packages: `/pages/packages/details?id=${item.id}`,
       };
       openPage(urls[item.scope]);
@@ -684,6 +765,107 @@ export default {
 }
 
 .expand-button::after {
+  border: 0;
+}
+
+.flavor-result {
+  padding: var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
+  margin-bottom: 18rpx;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease,
+    background-color 180ms ease;
+}
+
+.flavor-result:active {
+  opacity: 0.82;
+  transform: scale(0.99);
+}
+
+.flavor-result__type {
+  color: var(--accent-color);
+  font-size: var(--font-size-xs);
+  margin-bottom: var(--space-1);
+}
+
+.flavor-result__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.flavor-result__title {
+  flex: 0 1 auto;
+  font-size: 34rpx;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.flavor-result__count {
+  flex: 0 0 auto;
+  color: var(--muted-color);
+  font-size: var(--font-size-xs);
+}
+
+.flavor-result__definition {
+  margin-top: 10rpx;
+  color: var(--text-secondary-color);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.flavor-result__meta {
+  margin-top: 14rpx;
+}
+
+.flavor-result__pronunciation {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 10rpx 0;
+  color: var(--muted-color);
+  font-size: var(--font-size-xs);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.flavor-result__writings {
+  margin-top: 12rpx;
+  color: var(--accent-color);
+  font-size: var(--font-size-xs);
+}
+
+.flavor-result__more {
+  margin-top: 8rpx;
+  color: var(--muted-color);
+  font-size: var(--font-size-xs);
+}
+
+.flavor-more-button {
+  width: 100%;
+  margin: 10rpx 0 0;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  background: var(--surface-subtle-color);
+  color: var(--accent-color);
+  font-size: var(--font-size-xs);
+  line-height: 56rpx;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+.flavor-more-button:active {
+  opacity: 0.82;
+  transform: scale(0.99);
+}
+
+.flavor-more-button::after {
   border: 0;
 }
 

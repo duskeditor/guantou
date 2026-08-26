@@ -150,11 +150,11 @@
 
       <SectionBlock
         title="义项"
-        :empty="!shelf.flavors.length"
+        :empty="!groupedFlavors.length"
         empty-title="暂无义项"
       >
         <view
-          v-for="flavor in shelf.flavors"
+          v-for="flavor in groupedFlavors"
           :key="flavor.id"
           class="content-row"
         >
@@ -238,6 +238,10 @@ function currentUser() {
   };
 }
 
+function flavorGroupKey(item) {
+  return `${String(item.name || '').trim()}||${String(item.definition || '').trim()}`;
+}
+
 export default {
   components: {
     CanCard,
@@ -266,6 +270,20 @@ export default {
     };
   },
   computed: {
+    groupedFlavors() {
+      const groups = new Map();
+      (this.shelf?.flavors || []).forEach((flavor) => {
+        const key = flavorGroupKey(flavor);
+        if (!groups.has(key)) {
+          groups.set(key, {
+            id: flavor.id,
+            name: flavor.name,
+            definition: flavor.definition,
+          });
+        }
+      });
+      return [...groups.values()];
+    },
     canEdit() {
       if (!this.shelf || !this.currentUser.id) return false;
       return this.currentUser.is_staff
@@ -353,6 +371,9 @@ export default {
     },
     hasCan(id) {
       return this.shelf.cans.some((item) => Number(item.id) === Number(id));
+    },
+    flavorGroupMeta(flavor) {
+      return flavor.definition || '暂无释义';
     },
     async changeContent(kind, id, mode) {
       if (this.contentBusy || !this.canEdit) return;

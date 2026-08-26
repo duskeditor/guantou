@@ -26,17 +26,27 @@
         <view class="definition">
           {{ flavor.definition }}
         </view>
-        <button
-          class="primary-button"
-          @tap="toCreateForFlavor"
+      </SectionBlock>
+
+      <SectionBlock
+        title="读音变体"
+        :empty="!flavor.pronunciations.length"
+        empty-title="暂无读音变体"
+      >
+        <view
+          v-for="pronunciation in visiblePronunciations"
+          :key="pronunciation.id"
+          class="variant"
         >
-          用我的方言录一版
-        </button>
+          <text>{{ pronunciation.dialect ? pronunciation.dialect.qualified_code : '未标方言点' }}</text>
+          <text>{{ pronunciationLabel(pronunciation) }}</text>
+        </view>
         <button
-          class="secondary-button"
-          @tap="toCreatePronunciation"
+          v-if="flavor.pronunciations.length > 2"
+          class="writing-toggle"
+          @tap="showAllPronunciations = !showAllPronunciations"
         >
-          添加词典读音
+          {{ showAllPronunciations ? '收起' : `展开剩余 ${flavor.pronunciations.length - 2} 个读音` }}
         </button>
       </SectionBlock>
 
@@ -55,21 +65,6 @@
         </text>
       </SectionBlock>
 
-      <SectionBlock
-        title="读音变体"
-        :empty="!flavor.pronunciations.length"
-        empty-title="暂无读音变体"
-      >
-        <view
-          v-for="pronunciation in flavor.pronunciations"
-          :key="pronunciation.id"
-          class="variant"
-        >
-          <text>{{ pronunciation.dialect ? pronunciation.dialect.qualified_code : '未标方言点' }}</text>
-          <text>{{ pronunciationLabel(pronunciation) }}</text>
-        </view>
-      </SectionBlock>
-
       <SectionBlock title="相关罐头">
         <CanList
           :fetcher="listCans"
@@ -82,6 +77,22 @@
           @empty-action="toCreateForFlavor"
         />
       </SectionBlock>
+
+      <view class="detail-actions">
+        <button
+          class="primary-button"
+          @tap="toCreateForFlavor"
+        >
+          用我的方言录一版
+        </button>
+        <button
+          class="secondary-button"
+          @tap="toCreatePronunciation"
+        >
+          添加词典读音
+        </button>
+      </view>
+      <view class="action-spacer" />
     </template>
     <EmptyState
       v-else
@@ -99,7 +110,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import PageShell from '@/components/PageShell.vue';
 import SectionBlock from '@/components/SectionBlock.vue';
 import { requireAuth } from '@/services/authGuard';
-import { getFlavor, listCans } from '@/services/guantou';
+import { getFlavor, listCans, listFlavors } from '@/services/guantou';
 import {
   goAtlas,
   goCanDetail,
@@ -117,6 +128,15 @@ export function formatPronunciationLabel(pronunciation) {
   return surface || base || pronunciation.ipa || '未标音';
 }
 
+function uniqueById(items) {
+  const seen = new Set();
+  return (items || []).filter((item) => {
+    if (!item?.id || seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
 export default {
   components: {
     CanList,
@@ -128,12 +148,27 @@ export default {
     return {
       flavor: null,
       id: 0,
+      ids: [],
       loadError: '',
       loading: false,
+      showAllPronunciations: false,
     };
+  },
+  computed: {
+    visiblePronunciations() {
+      const pronunciations = this.flavor?.pronunciations || [];
+      if (this.showAllPronunciations || pronunciations.length <= 2) {
+        return pronunciations;
+      }
+      return pronunciations.slice(0, 2);
+    },
   },
   async onLoad(options) {
     this.id = options.id;
+    this.ids = String(options.ids || '')
+      .split(',')
+      .map((value) => Number(value))
+      .filter(Boolean);
     await this.refresh();
   },
   async onShow() {
@@ -146,12 +181,38 @@ export default {
       this.loading = !this.flavor;
       this.loadError = '';
       try {
-        this.flavor = await getFlavor(this.id);
+        const primary = await getFlavor(this.id);
+        if (this.ids.length > 1) {
+          const variants = await Promise.all(
+            this.ids.filter((id) => Number(id) !== Number(this.id)).map((id) => getFlavor(id)),
+          );
+          this.flavor = this.mergeFlavors([primary, ...variants]);
+          return;
+        }
+        const response = await listFlavors({ search: primary.name });
+        const variants = (response.results || response || []).filter((item) => (
+          String(item.name || '').trim() === String(primary.name || '').trim()
+          && String(item.definition || '').trim() === String(primary.definition || '').trim()
+        ));
+        this.flavor = this.mergeFlavors([primary, ...variants]);
       } catch (error) {
         this.loadError = '义项加载没有成功，请稍后再试。';
       } finally {
         this.loading = false;
       }
+    },
+    mergeFlavors(items) {
+      const pronunciations = [];
+      const packageLinks = [];
+      items.forEach((item) => {
+        pronunciations.push(...(item.pronunciations || []));
+        packageLinks.push(...(item.package_links || []));
+      });
+      return {
+        ...items[0],
+        pronunciations: uniqueById(pronunciations),
+        package_links: uniqueById(packageLinks),
+      };
     },
     toCan(id) {
       goCanDetail(id);
@@ -211,6 +272,22 @@ export default {
   transform: scale(0.97);
 }
 
+.writing-toggle {
+  width: 100%;
+  margin: 8rpx 0 0;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--accent-color);
+  border-radius: var(--radius-pill);
+  background: var(--accent-color);
+  color: var(--on-accent-color);
+  font-size: var(--font-size-sm);
+  line-height: 64rpx;
+}
+
+.writing-toggle::after {
+  border: 0;
+}
+
 .primary-button,
 .secondary-button {
   width: 100%;
@@ -221,14 +298,40 @@ export default {
     opacity 180ms ease;
 }
 
+.detail-actions {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  padding: var(--space-2) 28rpx calc(var(--space-2) + env(safe-area-inset-bottom));
+  background: var(--surface-color);
+  border-top: 1px solid var(--border-color);
+  box-sizing: border-box;
+}
+
+.detail-actions button {
+  margin: 0;
+  min-height: 88rpx;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-spacer {
+  height: 150rpx;
+}
+
 .primary-button {
-  margin-top: var(--space-3);
   background: var(--accent-color);
   color: var(--on-accent-color);
 }
 
 .secondary-button {
-  margin-top: 14rpx;
   border: 1px solid var(--accent-color);
   background: var(--surface-color);
   color: var(--accent-color);
