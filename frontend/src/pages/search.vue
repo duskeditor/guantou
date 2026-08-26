@@ -178,6 +178,29 @@
             {{ expandedSections.packages ? '收起' : `展开剩余 ${remainingCount('packages')} 条` }}
           </button>
         </SectionBlock>
+
+        <SectionBlock
+          v-if="showNameplates"
+          title="铭牌"
+        >
+          <EntityCard
+            v-for="item in visibleItems('nameplates')"
+            :key="`nameplate-${item.id}`"
+            type="铭牌"
+            :title="item.display_text || item.text_content || '未命名铭牌'"
+            :description="item.definition || item.flavor?.definition || '暂无释义'"
+            :meta="nameplateMeta(item)"
+            :item="{ ...item, scope: 'nameplates' }"
+            @open="openItem"
+          />
+          <button
+            v-if="hasMore('nameplates')"
+            class="expand-button"
+            @tap="toggleSection('nameplates')"
+          >
+            {{ expandedSections.nameplates ? '收起' : `展开剩余 ${remainingCount('nameplates')} 条` }}
+          </button>
+        </SectionBlock>
       </template>
       <SectionBlock
         v-else
@@ -270,6 +293,7 @@ export default {
       expandedSections: {
         cans: false,
         flavors: false,
+        nameplates: false,
         packages: false,
       },
       hasSearched: false,
@@ -296,6 +320,7 @@ export default {
     totalResults() {
       return (this.results.flavors || []).length
         + (this.results.packages || []).length
+        + (this.results.nameplates || []).length
         + (this.results.cans || []).length;
     },
     showCans() {
@@ -309,6 +334,9 @@ export default {
     showPackages() {
       return this.results.packages.length
         && (this.activeTab === 'all' || this.activeTab === 'packages');
+    },
+    showNameplates() {
+      return this.activeTab === 'all' && this.results.nameplates.length;
     },
     groupedFlavors() {
       const groups = new Map();
@@ -330,7 +358,7 @@ export default {
       return [...groups.values()];
     },
     hasVisibleResults() {
-      return this.showCans || this.showFlavors || this.showPackages;
+      return this.showCans || this.showFlavors || this.showPackages || this.showNameplates;
     },
   },
   onLoad(option) {
@@ -499,6 +527,23 @@ export default {
     },
     packageMeta(item) {
       return `${(item.flavors || []).length} 个义项 · ${item.package_type || 'uncertain'}`;
+    },
+    nameplateMeta(item) {
+      const parts = [];
+      if (item.dialect?.qualified_code) parts.push(item.dialect.qualified_code);
+      if (
+        item.pronunciation?.surface_romanization
+        || item.pronunciation?.base_romanization
+        || item.pronunciation?.ipa
+      ) {
+        parts.push(
+          item.pronunciation.surface_romanization
+          || item.pronunciation.base_romanization
+          || item.pronunciation.ipa,
+        );
+      }
+      if (item.package?.text) parts.push(`写法 ${item.package.text}`);
+      return parts.join(' · ') || '铭牌证据';
     },
     openCan(id) {
       goCanDetail(id);
