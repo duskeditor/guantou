@@ -225,6 +225,7 @@ export default {
   padding: 0 var(--space-3);
   border-radius: var(--radius-pill);
   line-height: 96rpx;
+  font-size: var(--font-size-base);
 }
 
 .picker-field {
@@ -233,6 +234,7 @@ export default {
   border-radius: var(--radius-sm);
   color: var(--text-secondary-color);
   line-height: 96rpx;
+  font-size: var(--font-size-base);
 }
 
 .small-button {

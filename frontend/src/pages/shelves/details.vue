@@ -1,8 +1,6 @@
 <template>
   <PageShell
     title="集盒详情"
-    :action-text="canEdit ? (showEditor ? '收起' : '编辑') : ''"
-    @action="toggleEditor"
   >
     <view
       v-if="loading"
@@ -88,6 +86,9 @@
             class="candidate"
           >
             <view class="candidate-copy">
+              <text class="candidate-type">
+                义项
+              </text>
               <text class="candidate-title">
                 {{ candidate.name }}
               </text>
@@ -127,23 +128,24 @@
           <view
             v-for="candidate in canCandidates"
             :key="candidate.id"
-            class="candidate"
+            class="candidate can-candidate"
           >
             <view class="candidate-copy">
-              <text class="candidate-title">
-                {{ candidate.concept_text || `罐头 #${candidate.id}` }}
-              </text>
-              <text class="candidate-description">
-                {{ candidate.submitted_dialect?.qualified_code || '未标方言点' }}
-              </text>
+              <CanCard
+                :can="candidate"
+                @open="toCan"
+              >
+                <template #action-right>
+                  <button
+                    class="candidate-button"
+                    :disabled="contentBusy || hasCan(candidate.id)"
+                    @tap="changeContent('can', candidate.id, 'add')"
+                  >
+                    {{ hasCan(candidate.id) ? '已添加' : '加入集盒' }}
+                  </button>
+                </template>
+              </CanCard>
             </view>
-            <button
-              class="candidate-button"
-              :disabled="contentBusy || hasCan(candidate.id)"
-              @tap="changeContent('can', candidate.id, 'add')"
-            >
-              {{ hasCan(candidate.id) ? '已添加' : '添加' }}
-            </button>
           </view>
         </view>
       </SectionBlock>
@@ -204,6 +206,18 @@
           </button>
         </view>
       </SectionBlock>
+      <view
+        v-if="canEdit"
+        class="shelf-edit-bar"
+      >
+        <button
+          class="edit-toggle-button"
+          @tap="toggleEditor"
+        >
+          {{ showEditor ? '退出编辑' : '编辑' }}
+        </button>
+      </view>
+      <view class="edit-spacer" />
     </template>
   </PageShell>
 </template>
@@ -218,8 +232,7 @@ import { requireAuth } from '@/services/authGuard';
 import { goCanDetail, goFlavorDetail, goShelves } from '@/services/navigation';
 import {
   getShelf,
-  listCans,
-  listFlavors,
+  searchGuantou,
   updateShelf,
 } from '@/services/guantou';
 
@@ -350,8 +363,8 @@ export default {
       const keyword = this.flavorSearch.trim();
       if (!keyword) return;
       try {
-        const response = await listFlavors({ search: keyword, page_size: 20 });
-        this.flavorCandidates = response.results || response || [];
+        const response = await searchGuantou(keyword, { limit: 20 });
+        this.flavorCandidates = response.flavors || [];
       } catch (error) {
         uni.showToast({ title: '义项搜索失败', icon: 'none' });
       }
@@ -360,8 +373,8 @@ export default {
       const keyword = this.canSearch.trim();
       if (!keyword) return;
       try {
-        const response = await listCans({ search: keyword, page_size: 20 });
-        this.canCandidates = response.results || response || [];
+        const response = await searchGuantou(keyword, { limit: 20 });
+        this.canCandidates = response.cans || [];
       } catch (error) {
         uni.showToast({ title: '罐头搜索失败', icon: 'none' });
       }
@@ -424,15 +437,20 @@ export default {
 .field {
   width: 100%;
   box-sizing: border-box;
+  min-height: 96rpx;
   margin-bottom: var(--space-2);
-  padding: 18rpx;
+  padding: 0 var(--space-3);
   background: var(--surface-color);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
+  font-size: var(--font-size-base);
+  line-height: 96rpx;
 }
 
 .textarea {
   min-height: 130rpx;
+  padding: 18rpx;
+  line-height: 1.5;
 }
 
 .primary-button,
@@ -505,6 +523,17 @@ export default {
   background: var(--surface-subtle-color);
 }
 
+.candidate.can-candidate {
+  align-items: flex-start;
+  background: transparent;
+  padding: 0;
+}
+
+.candidate.can-candidate .candidate-copy {
+  min-width: 0;
+  flex: 1;
+}
+
 .candidate-copy {
   display: flex;
   min-width: 0;
@@ -514,6 +543,12 @@ export default {
 
 .candidate-title {
   font-weight: 700;
+}
+
+.candidate-type {
+  margin-bottom: 4rpx;
+  color: var(--accent-color);
+  font-size: var(--font-size-xs);
 }
 
 .candidate-description {
@@ -578,6 +613,36 @@ export default {
 
 .error-retry::after {
   border: 0;
+}
+
+.shelf-edit-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  padding: var(--space-2) 28rpx calc(var(--space-2) + env(safe-area-inset-bottom));
+  background: var(--surface-color);
+  border-top: 1px solid var(--border-color);
+  box-sizing: border-box;
+}
+
+.edit-toggle-button {
+  width: 100%;
+  margin: 0;
+  min-height: 88rpx;
+  font-size: var(--font-size-sm);
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-color);
+  color: var(--on-accent-color);
+  border-radius: var(--radius-pill);
+}
+
+.edit-spacer {
+  height: 150rpx;
 }
 
 @media (prefers-reduced-motion: reduce) {

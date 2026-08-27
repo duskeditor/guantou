@@ -34,16 +34,25 @@
     <view class="meta">
       {{ locationText }} · {{ nameplateCount }} 张铭牌 · {{ can.views || 0 }} 次查看
     </view>
-    <button
-      class="play-button"
-      :disabled="!can.audio_url"
-      @tap.stop="play"
-    >
-      <text class="play-icon">
-        ▶
-      </text>
-      <text>{{ can.audio_url ? `听乡音${durationText}` : '暂无可播放音频' }}</text>
-    </button>
+    <view class="play-row">
+      <button
+        class="play-button"
+        :disabled="!can.audio_url"
+        @tap.stop="play"
+      >
+        <text class="play-icon">
+          ▶
+        </text>
+        <text>{{ can.audio_url ? `听乡音${durationText}` : '暂无可播放音频' }}</text>
+      </button>
+      <view
+        v-if="$slots['action-right']"
+        class="action-right"
+        @tap.stop
+      >
+        <slot name="action-right" />
+      </view>
+    </view>
     <view
       v-if="social"
       class="social-actions"
@@ -255,10 +264,17 @@ export default {
   font-size: var(--font-size-xs);
 }
 
+.play-row {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
 .play-button {
-  width: 100%;
+  flex: 1;
+  width: auto;
   min-height: 68rpx;
-  margin: 20rpx 0 0;
+  margin: 0;
   padding: 0 20rpx;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-pill);
@@ -269,6 +285,12 @@ export default {
   align-items: center;
   justify-content: center;
   gap: 12rpx;
+}
+
+.action-right {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
 }
 
 .play-button::after {

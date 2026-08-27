@@ -183,23 +183,6 @@
             <view class="flavor-result__definition">
               {{ item.definition }}
             </view>
-            <view class="flavor-result__meta">
-              <view
-                v-for="pronunciation in visibleFlavorPronunciations(item)"
-                :key="`${item.id}-${pronunciation.id}`"
-                class="flavor-result__pronunciation"
-              >
-                <text>{{ pronunciation.dialect?.qualified_code || '未标方言点' }}</text>
-                <text>{{ pronunciationText(pronunciation) }}</text>
-              </view>
-              <button
-                v-if="item.pronunciations.length > 2"
-                class="flavor-more-button"
-                @tap="toggleFlavorPronunciations(item)"
-              >
-                {{ flavorPronunciationToggleText(item) }}
-              </button>
-            </view>
           </view>
           <button
             v-if="hasMore('flavors')"

@@ -4,7 +4,13 @@
     active="box"
     action-text="创建"
     @action="openCreate"
+    @action-suffix="toSearch"
   >
+    <template #action-suffix>
+      <text class="header-search-icon">
+        ⌕
+      </text>
+    </template>
     <view
       v-if="showCreate"
       class="create-card"
@@ -99,7 +105,7 @@ import EntityCard from '@/components/EntityCard.vue';
 import SectionBlock from '@/components/SectionBlock.vue';
 import { requireAuth } from '@/services/authGuard';
 import { createShelf, listShelves } from '@/services/guantou';
-import { goShelfDetail } from '@/services/navigation';
+import { goSearch, goShelfDetail } from '@/services/navigation';
 
 export function createShelfSlug(userId, now = Date.now(), random = Math.random()) {
   const owner = Number(userId) || 0;
@@ -193,11 +199,20 @@ export default {
     toDetail(id) {
       goShelfDetail(id);
     },
+    toSearch() {
+      goSearch();
+    },
   },
 };
 </script>
 
 <style scoped>
+.header-search-icon {
+  color: var(--on-immersive-color);
+  font-size: 38rpx;
+  line-height: 1;
+}
+
 .create-card {
   margin-bottom: var(--space-3);
   padding: var(--space-3);
@@ -214,15 +229,21 @@ export default {
 .field {
   width: 100%;
   box-sizing: border-box;
+  min-height: 96rpx;
   margin-bottom: var(--space-2);
-  padding: 18rpx;
+  padding: 0 var(--space-3);
   background: var(--surface-color);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
+  line-height: 96rpx;
+  font-size: var(--font-size-base);
 }
 
 .textarea {
   min-height: 130rpx;
+  padding: 18rpx;
+  line-height: 1.5;
+  font-size: var(--font-size-base);
 }
 
 .field-error {

@@ -292,6 +292,7 @@ export default {
 .secondary-button {
   width: 100%;
   min-height: 76rpx;
+  font-size: var(--font-size-sm);
   border-radius: var(--radius-sm);
   transition:
     transform 180ms ease,
@@ -316,6 +317,7 @@ export default {
 .detail-actions button {
   margin: 0;
   min-height: 88rpx;
+  font-size: var(--font-size-sm);
   line-height: normal;
   display: flex;
   align-items: center;
@@ -345,7 +347,8 @@ export default {
 
 .variant {
   display: flex;
-  justify-content: space-between;
+  align-items: baseline;
+  justify-content: flex-start;
   gap: 20rpx;
   padding: 16rpx 0;
   border-bottom: 1px solid var(--border-color);

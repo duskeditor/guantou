@@ -2,16 +2,24 @@
   <AppShell
     title="义项图鉴"
     active="atlas"
-    action-text="浏览写法"
+    action-text="切换为写法图鉴"
     @action="toPackages"
+    @action-suffix="toSearch"
   >
+    <template #action-suffix>
+      <text class="header-search-icon">
+        ⌕
+      </text>
+    </template>
     <view class="search-row">
-      <input
-        v-model="search"
-        class="search"
-        placeholder="搜索义项、释义、写法"
-        @confirm="refresh"
-      >
+      <view class="search-field">
+        <input
+          v-model="search"
+          class="search"
+          placeholder="搜索义项、释义、写法"
+          @confirm="refresh"
+        >
+      </view>
       <button
         class="small-button"
         @tap="refresh"
@@ -96,7 +104,7 @@
 import AppShell from '@/components/AppShell.vue';
 import SectionBlock from '@/components/SectionBlock.vue';
 import { listFlavors } from '@/services/guantou';
-import { goFlavorDetail, goPackageList } from '@/services/navigation';
+import { goFlavorDetail, goPackageList, goSearch } from '@/services/navigation';
 
 function flavorGroupKey(item) {
   return `${String(item.name || '').trim()}||${String(item.definition || '').trim()}`;
@@ -210,6 +218,9 @@ export default {
     toPackages() {
       goPackageList();
     },
+    toSearch() {
+      goSearch();
+    },
   },
 };
 </script>
@@ -222,6 +233,23 @@ export default {
   margin-bottom: var(--space-3);
 }
 
+.search-field {
+  display: flex;
+  align-items: center;
+  min-height: 96rpx;
+  padding: 0 var(--space-3);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  box-sizing: border-box;
+}
+
+.header-search-icon {
+  color: var(--on-immersive-color);
+  font-size: 38rpx;
+  line-height: 1;
+}
+
 .search,
 .small-button {
   min-height: 96rpx;
@@ -229,11 +257,12 @@ export default {
 }
 
 .search {
-  box-sizing: border-box;
+  min-width: 0;
+  flex: 1;
   padding: 0 var(--space-3);
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-pill);
+  background: transparent;
+  border: 0;
+  font-size: var(--font-size-base);
 }
 
 .small-button {

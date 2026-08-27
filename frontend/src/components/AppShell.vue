@@ -9,13 +9,22 @@
           {{ title }}
         </view>
       </view>
-      <BaseButton
-        v-if="actionText"
-        size="small"
-        variant="light"
-        :text="actionText"
-        @click="$emit('action')"
-      />
+      <view class="app-shell__actions">
+        <BaseButton
+          v-if="actionText"
+          size="small"
+          variant="light"
+          :text="actionText"
+          @click="$emit('action')"
+        />
+        <view
+          v-if="$slots['action-suffix']"
+          class="app-shell__action-suffix"
+          @tap="$emit('action-suffix')"
+        >
+          <slot name="action-suffix" />
+        </view>
+      </view>
     </view>
     <scroll-view
       v-if="scroll"
@@ -57,7 +66,7 @@ export default {
     actionText: { type: String, default: '' },
     scroll: { type: Boolean, default: true },
   },
-  emits: ['action', 'scrolltolower'],
+  emits: ['action', 'action-suffix', 'scrolltolower'],
 };
 </script>
 
@@ -74,7 +83,7 @@ export default {
 }
 .app-shell__header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 24rpx;
   padding: calc(28rpx + env(safe-area-inset-top)) 30rpx 28rpx;
@@ -98,6 +107,23 @@ export default {
   font-size: 42rpx;
   font-weight: 900;
   letter-spacing: 2rpx;
+}
+
+.app-shell__action-suffix {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52rpx;
+  color: var(--on-immersive-color);
+  font-size: 38rpx;
+}
+
+.app-shell__actions {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-left: auto;
 }
 .app-shell__scroll { height: calc(100vh - 116rpx - env(safe-area-inset-top)); }
 .app-shell__content {
