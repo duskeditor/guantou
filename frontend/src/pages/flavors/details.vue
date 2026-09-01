@@ -67,7 +67,7 @@
 
       <SectionBlock title="相关罐头">
         <CanList
-          :fetcher="listCans"
+          :fetcher="fetchRelatedCans"
           :query="{ flavor_id: id }"
           :scroll="false"
           empty-title="还没有相关罐头"
@@ -175,7 +175,6 @@ export default {
     if (this.id && this.flavor) await this.refresh();
   },
   methods: {
-    listCans,
     pronunciationLabel: formatPronunciationLabel,
     async refresh() {
       this.loading = !this.flavor;
@@ -210,8 +209,23 @@ export default {
       });
       return {
         ...items[0],
+        flavor_ids: items.map((item) => item.id),
         pronunciations: uniqueById(pronunciations),
         package_links: uniqueById(packageLinks),
+      };
+    },
+    async fetchRelatedCans(params = {}) {
+      const flavorIds = this.ids.length ? this.ids : [this.id];
+      const responses = await Promise.all(
+        flavorIds.map((flavorId) => listCans({ ...params, flavor_id: flavorId })),
+      );
+      const results = responses.reduce(
+        (items, response) => items.concat(response.results || response || []),
+        [],
+      );
+      return {
+        results: uniqueById(results),
+        next: null,
       };
     },
     toCan(id) {
@@ -224,19 +238,21 @@ export default {
       goAtlas();
     },
     toCreateForFlavor() {
+      const targetId = this.flavor?.flavor_ids?.[0] || this.id;
       if (!requireAuth('record_can', {
         page: 'flavor_detail',
-        flavorId: this.id,
+        flavorId: targetId,
         flavorName: this.flavor.name,
       })) return;
-      goCreateCan({ flavor: this.id, flavor_name: this.flavor.name });
+      goCreateCan({ flavor: targetId, flavor_name: this.flavor.name });
     },
     toCreatePronunciation() {
+      const targetId = this.flavor?.flavor_ids?.[0] || this.id;
       if (!requireAuth('pronunciation_create', {
         page: 'flavor_detail',
-        flavorId: this.id,
+        flavorId: targetId,
       })) return;
-      goPronunciationCreate(this.id);
+      goPronunciationCreate(targetId);
     },
   },
 };
