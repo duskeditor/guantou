@@ -26,6 +26,12 @@
         <view class="definition">
           {{ flavor.definition }}
         </view>
+        <view
+          v-if="flavorIds.length > 1"
+          class="aggregate-note"
+        >
+          此页合并了 {{ flavorIds.length }} 个同名义项；新增内容会先选择具体义项。
+        </view>
       </SectionBlock>
 
       <SectionBlock
@@ -68,26 +74,25 @@
       <SectionBlock title="相关罐头">
         <CanList
           :fetcher="fetchRelatedCans"
-          :query="{ flavor_id: id }"
           :scroll="false"
           empty-title="还没有相关罐头"
           empty-description="可以用自己的方言为这个义项补录一版。"
           empty-action-text="补录乡音"
           @open="toCan"
-          @empty-action="toCreateForFlavor"
+          @empty-action="toCreateForFlavor()"
         />
       </SectionBlock>
 
       <view class="detail-actions">
         <button
           class="primary-button"
-          @tap="toCreateForFlavor"
+          @tap="toCreateForFlavor()"
         >
           用我的方言录一版
         </button>
         <button
           class="secondary-button"
-          @tap="toCreatePronunciation"
+          @tap="toCreatePronunciation()"
         >
           添加词典读音
         </button>
@@ -137,6 +142,17 @@ function uniqueById(items) {
   });
 }
 
+function uniqueIds(items) {
+  const seen = new Set();
+  return (items || []).reduce((ids, value) => {
+    const id = Number(value);
+    if (!Number.isInteger(id) || id <= 0 || seen.has(id)) return ids;
+    seen.add(id);
+    ids.push(id);
+    return ids;
+  }, []);
+}
+
 export default {
   components: {
     CanList,
@@ -155,6 +171,9 @@ export default {
     };
   },
   computed: {
+    flavorIds() {
+      return this.getFlavorIds();
+    },
     visiblePronunciations() {
       const pronunciations = this.flavor?.pronunciations || [];
       if (this.showAllPronunciations || pronunciations.length <= 2) {
@@ -176,6 +195,11 @@ export default {
   },
   methods: {
     pronunciationLabel: formatPronunciationLabel,
+    getFlavorIds() {
+      if (this.flavor?.flavor_ids?.length) return uniqueIds(this.flavor.flavor_ids);
+      if (this.ids?.length) return uniqueIds(this.ids);
+      return uniqueIds([this.id]);
+    },
     async refresh() {
       this.loading = !this.flavor;
       this.loadError = '';
@@ -201,21 +225,32 @@ export default {
       }
     },
     mergeFlavors(items) {
+      const validItems = (items || []).filter((item) => item && item.id);
       const pronunciations = [];
       const packageLinks = [];
-      items.forEach((item) => {
+      validItems.forEach((item) => {
         pronunciations.push(...(item.pronunciations || []));
         packageLinks.push(...(item.package_links || []));
       });
+      const flavorIds = uniqueIds(validItems.map((item) => item.id));
+      const flavorVariants = flavorIds.map((id) => {
+        const item = validItems.find((candidate) => Number(candidate.id) === id);
+        return {
+          id,
+          geo_scope: item?.geo_scope || '',
+          created_by: item?.created_by || null,
+        };
+      });
       return {
-        ...items[0],
-        flavor_ids: items.map((item) => item.id),
+        ...(validItems[0] || {}),
+        flavor_ids: flavorIds,
+        flavor_variants: flavorVariants,
         pronunciations: uniqueById(pronunciations),
         package_links: uniqueById(packageLinks),
       };
     },
     async fetchRelatedCans(params = {}) {
-      const flavorIds = this.ids.length ? this.ids : [this.id];
+      const flavorIds = this.getFlavorIds();
       const responses = await Promise.all(
         flavorIds.map((flavorId) => listCans({ ...params, flavor_id: flavorId })),
       );
@@ -225,8 +260,51 @@ export default {
       );
       return {
         results: uniqueById(results),
+        // Each aggregate page fans out to every flavor; pagination cursors cannot
+        // be represented by a single CanList cursor, so keep this view bounded.
         next: null,
       };
+    },
+    flavorTargetLabel(id, index) {
+      const variant = (this.flavor?.flavor_variants || []).find(
+        (item) => Number(item.id) === Number(id),
+      );
+      const context = variant?.geo_scope
+        || variant?.created_by?.nickname
+        || variant?.created_by?.username;
+      const descriptor = context ? ` · ${context}` : '';
+      return `${this.flavor?.name || '义项'}（义项 #${id}${descriptor || ` · 第 ${index + 1} 个`}）`;
+    },
+    selectFlavorTarget(onSelected) {
+      if (typeof onSelected !== 'function') return;
+      const flavorIds = this.getFlavorIds();
+      if (flavorIds.length <= 1) {
+        if (flavorIds[0]) onSelected(flavorIds[0]);
+        return;
+      }
+      if (typeof uni === 'undefined' || typeof uni.showActionSheet !== 'function') {
+        if (typeof uni !== 'undefined' && typeof uni.showToast === 'function') {
+          uni.showToast({ title: '请选择具体义项后再操作', icon: 'none' });
+        }
+        return;
+      }
+      uni.showActionSheet({
+        itemList: flavorIds.map((id, index) => this.flavorTargetLabel(id, index)),
+        success: ({ tapIndex }) => {
+          const selectedId = flavorIds[Number(tapIndex)];
+          if (selectedId) onSelected(selectedId);
+        },
+      });
+    },
+    resolveFlavorTarget(targetId, onSelected) {
+      if (typeof onSelected !== 'function') return;
+      const flavorIds = this.getFlavorIds();
+      const normalizedId = Number(targetId);
+      if (Number.isInteger(normalizedId) && flavorIds.includes(normalizedId)) {
+        onSelected(normalizedId);
+        return;
+      }
+      this.selectFlavorTarget(onSelected);
     },
     toCan(id) {
       goCanDetail(id);
@@ -237,22 +315,24 @@ export default {
     toFlavors() {
       goAtlas();
     },
-    toCreateForFlavor() {
-      const targetId = this.flavor?.flavor_ids?.[0] || this.id;
-      if (!requireAuth('record_can', {
-        page: 'flavor_detail',
-        flavorId: targetId,
-        flavorName: this.flavor.name,
-      })) return;
-      goCreateCan({ flavor: targetId, flavor_name: this.flavor.name });
+    toCreateForFlavor(targetId) {
+      this.resolveFlavorTarget(targetId, (selectedId) => {
+        if (!requireAuth('record_can', {
+          page: 'flavor_detail',
+          flavorId: selectedId,
+          flavorName: this.flavor.name,
+        })) return;
+        goCreateCan({ flavor: selectedId, flavor_name: this.flavor.name });
+      });
     },
-    toCreatePronunciation() {
-      const targetId = this.flavor?.flavor_ids?.[0] || this.id;
-      if (!requireAuth('pronunciation_create', {
-        page: 'flavor_detail',
-        flavorId: targetId,
-      })) return;
-      goPronunciationCreate(targetId);
+    toCreatePronunciation(targetId) {
+      this.resolveFlavorTarget(targetId, (selectedId) => {
+        if (!requireAuth('pronunciation_create', {
+          page: 'flavor_detail',
+          flavorId: selectedId,
+        })) return;
+        goPronunciationCreate(selectedId);
+      });
     },
   },
 };
@@ -268,6 +348,13 @@ export default {
 .definition {
   margin-top: 14rpx;
   color: var(--text-secondary-color);
+  line-height: 1.5;
+}
+
+.aggregate-note {
+  margin-top: var(--space-2);
+  color: var(--muted-color);
+  font-size: var(--font-size-xs);
   line-height: 1.5;
 }
 
