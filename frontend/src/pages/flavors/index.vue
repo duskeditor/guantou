@@ -1,10 +1,11 @@
 <template>
   <AppShell
-    title="义项图鉴"
+    :title="atlasTitle"
     active="atlas"
-    action-text="切换为写法图鉴"
-    @action="toPackages"
+    :action-text="switchActionText"
+    @action="switchAtlas"
     @action-suffix="toSearch"
+    @scrolltolower="loadMore"
   >
     <template #action-suffix>
       <text class="header-search-icon">
@@ -16,7 +17,7 @@
         <input
           v-model="search"
           class="search"
-          placeholder="搜索义项、释义、写法"
+          :placeholder="searchPlaceholder"
           @confirm="refresh"
         >
       </view>
@@ -27,6 +28,18 @@
         搜索
       </button>
     </view>
+
+    <picker
+      v-if="showPackages"
+      :range="packageTypeOptions"
+      range-key="label"
+      :value="packageTypeIndex"
+      @change="onPackageTypeChange"
+    >
+      <view class="picker-field">
+        类型 · {{ packageTypeOptions[packageTypeIndex].label }}
+      </view>
+    </picker>
 
     <view
       v-if="loading"
@@ -39,7 +52,7 @@
       />
     </view>
     <view
-      v-else-if="loadError"
+      v-else-if="loadError && (!showPackages || !packages.length)"
       class="error-state"
     >
       <text>{{ loadError }}</text>
@@ -50,7 +63,7 @@
         重试
       </button>
     </view>
-    <template v-else>
+    <template v-else-if="!showPackages">
       <view
         v-for="item in groupedFlavors"
         :key="item.id"
@@ -97,14 +110,76 @@
         empty-description="可以先从搜索或装罐流程里沉淀第一批义项。"
       />
     </template>
+    <template v-else>
+      <view
+        v-if="loadError"
+        class="error-state package-load-more-error"
+      >
+        <text>{{ loadError }}</text>
+        <button
+          class="state-retry"
+          @tap="refreshPackages"
+        >
+          重试
+        </button>
+      </view>
+      <EntityCard
+        v-for="item in packages"
+        :key="item.id"
+        type="写法"
+        :title="item.text"
+        :description="packageTypeLabel(item.package_type)"
+        :meta="`${(item.flavors || []).length} 个关联义项`"
+        :item="item"
+        @open="toPackageDetail(item.id)"
+      />
+
+      <SectionBlock
+        v-if="showPackageEmpty"
+        :empty="true"
+        empty-title="没有找到写法"
+        empty-description="换个关键词或类型看看，也可以切换到义项图鉴继续浏览。"
+        empty-action-text="浏览全部"
+        @empty-action="resetPackageFilters"
+      />
+      <uni-load-more
+        v-if="packages.length"
+        :status="loadingStatus"
+      />
+    </template>
   </AppShell>
 </template>
 
 <script>
 import AppShell from '@/components/AppShell.vue';
+import EntityCard from '@/components/EntityCard.vue';
 import SectionBlock from '@/components/SectionBlock.vue';
-import { listFlavors } from '@/services/guantou';
-import { goFlavorDetail, goPackageList, goSearch } from '@/services/navigation';
+import { listFlavors, listPackages } from '@/services/guantou';
+import {
+  goFlavorDetail,
+  goPackageDetail,
+  goSearch,
+  openPage,
+  ROUTES,
+} from '@/services/navigation';
+
+export const PACKAGE_TYPES = [
+  { value: '', label: '全部写法' },
+  { value: 'orthodox', label: '正字' },
+  { value: 'loan', label: '借字' },
+  { value: 'popular', label: '俗写' },
+  { value: 'phonetic', label: '拟音' },
+  { value: 'romanization', label: '罗马字' },
+  { value: 'uncertain', label: '不确定' },
+];
+
+export function packageListParams(search, packageType, page = 1) {
+  const params = { page };
+  const keyword = String(search || '').trim();
+  if (keyword) params.search = keyword;
+  if (packageType) params.package_type = packageType;
+  return params;
+}
 
 function flavorGroupKey(item) {
   return `${String(item.name || '').trim()}||${String(item.definition || '').trim()}`;
@@ -122,20 +197,31 @@ function uniqueById(items) {
 export default {
   components: {
     AppShell,
+    EntityCard,
     SectionBlock,
   },
   data() {
     return {
+      activeAtlas: 'flavors',
       flavors: [],
       loadError: '',
       loading: false,
+      loadingStatus: 'more',
+      packageType: '',
+      packageTypeOptions: PACKAGE_TYPES,
+      packages: [],
+      page: 1,
       search: '',
     };
   },
-  onLoad() {
+  onLoad(options = {}) {
+    this.activeAtlas = options.view === 'packages' ? 'packages' : 'flavors';
     this.refresh();
   },
   computed: {
+    atlasTitle() {
+      return this.showPackages ? '写法图鉴' : '义项图鉴';
+    },
     groupedFlavors() {
       const groups = new Map();
       this.flavors.forEach((flavor) => {
@@ -159,9 +245,34 @@ export default {
       });
       return [...groups.values()];
     },
+    packageTypeIndex() {
+      const index = this.packageTypeOptions.findIndex(
+        (item) => item.value === this.packageType,
+      );
+      return index < 0 ? 0 : index;
+    },
+    searchPlaceholder() {
+      return this.showPackages ? '搜索字、词或罗马字' : '搜索义项、释义、写法';
+    },
+    showPackageEmpty() {
+      return !this.loading && !this.loadError && !this.packages.length;
+    },
+    showPackages() {
+      return this.activeAtlas === 'packages';
+    },
+    switchActionText() {
+      return this.showPackages ? '切换为义项图鉴' : '切换为写法图鉴';
+    },
   },
   methods: {
     async refresh() {
+      if (this.showPackages) {
+        await this.refreshPackages();
+        return;
+      }
+      await this.refreshFlavors();
+    },
+    async refreshFlavors() {
       this.loading = !this.flavors.length;
       this.loadError = '';
       try {
@@ -171,6 +282,44 @@ export default {
         this.loadError = '义项加载没有成功，请稍后再试。';
       } finally {
         this.loading = false;
+      }
+    },
+    async refreshPackages() {
+      this.page = 1;
+      this.loadError = '';
+      this.loading = !this.packages.length;
+      this.loadingStatus = 'loading';
+      try {
+        const response = await listPackages(
+          packageListParams(this.search, this.packageType, this.page),
+        );
+        this.packages = response.results || response || [];
+        this.loadingStatus = response.next ? 'more' : 'noMore';
+      } catch (error) {
+        this.loadError = '写法加载没有成功，请稍后再试。';
+        this.loadingStatus = 'more';
+      } finally {
+        this.loading = false;
+      }
+    },
+    async loadMore() {
+      if (!this.showPackages || this.loadingStatus !== 'more') return;
+      const nextPage = this.page + 1;
+      this.loadingStatus = 'loading';
+      try {
+        const response = await listPackages(
+          packageListParams(this.search, this.packageType, nextPage),
+        );
+        this.page = nextPage;
+        const knownIds = new Set(this.packages.map((item) => item.id));
+        const additions = (response.results || response || []).filter(
+          (item) => !knownIds.has(item.id),
+        );
+        this.packages = this.packages.concat(additions);
+        this.loadingStatus = response.next ? 'more' : 'noMore';
+      } catch (error) {
+        this.loadError = '加载更多没有成功，请稍后再试。';
+        this.loadingStatus = 'more';
       }
     },
     flavorGroupMeta(item) {
@@ -215,8 +364,24 @@ export default {
     toDetail(id) {
       goFlavorDetail(id);
     },
-    toPackages() {
-      goPackageList();
+    packageTypeLabel(value) {
+      return this.packageTypeOptions.find((item) => item.value === value)?.label || value;
+    },
+    onPackageTypeChange(event) {
+      this.packageType = this.packageTypeOptions[Number(event.detail.value)]?.value || '';
+      this.refreshPackages();
+    },
+    resetPackageFilters() {
+      this.search = '';
+      this.packageType = '';
+      this.refreshPackages();
+    },
+    switchAtlas() {
+      const params = this.showPackages ? {} : { view: 'packages' };
+      openPage(ROUTES.atlas, params, { replace: true });
+    },
+    toPackageDetail(id) {
+      goPackageDetail(id);
     },
     toSearch() {
       goSearch();
@@ -265,6 +430,19 @@ export default {
   font-size: var(--font-size-base);
 }
 
+.picker-field {
+  min-height: 96rpx;
+  margin-bottom: var(--space-3);
+  padding: 0 22rpx;
+  box-sizing: border-box;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--surface-color);
+  color: var(--text-secondary-color);
+  font-size: var(--font-size-base);
+  line-height: 96rpx;
+}
+
 .small-button {
   margin: 0;
   padding: 0 var(--space-3);
@@ -309,6 +487,10 @@ export default {
   border-radius: var(--radius-sm);
   background: var(--danger-subtle-color);
   color: var(--danger-color);
+}
+
+.package-load-more-error {
+  margin-bottom: var(--space-2);
 }
 
 .flavor-result {

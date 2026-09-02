@@ -139,6 +139,10 @@ export function getNameplate(id) {
   return request.get(`/nameplates/${id}/`);
 }
 
+export function listNameplates(params = {}) {
+  return request.get('/nameplates/', params);
+}
+
 export function transitionCan(canId, action, reason = '') {
   return request.post(
     `/cans/${canId}/transition/`,

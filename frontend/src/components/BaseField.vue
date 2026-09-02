@@ -16,12 +16,14 @@
         :maxlength="maxlength"
         :disabled="disabled"
         :readonly="readonly"
+        :focus="focus"
         :autosize="resolvedAutosize"
         :indicator="indicator"
         bordered
         @change="handleChange"
         @blur="$emit('blur', $event)"
         @focus="$emit('focus', $event)"
+        @confirm="$emit('confirm', $event)"
       />
       <t-input
         v-else
@@ -31,12 +33,14 @@
         :maxlength="maxlength"
         :disabled="disabled"
         :readonly="readonly"
+        :focus="focus"
         :clearable="clearable"
         :status="error ? 'error' : 'default'"
         borderless
         @change="handleChange"
         @blur="$emit('blur', $event)"
         @focus="$emit('focus', $event)"
+        @confirm="$emit('confirm', $event)"
       />
     </view>
     <view
@@ -76,8 +80,9 @@ export default {
     autosize: { type: [Boolean, Object], default: false },
     indicator: { type: Boolean, default: false },
     clearable: { type: Boolean, default: false },
+    focus: { type: Boolean, default: false },
   },
-  emits: ['update:modelValue', 'change', 'input', 'blur', 'focus'],
+  emits: ['update:modelValue', 'change', 'input', 'blur', 'focus', 'confirm'],
   computed: {
     inputType() {
       if (this.type === 'tel') return 'number';

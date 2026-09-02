@@ -2,23 +2,21 @@
   <PageShell
     title="集盒详情"
   >
-    <view
+    <BaseLoading
       v-if="loading"
-      class="state"
-    >
-      正在加载集盒…
-    </view>
+      text="正在加载集盒…"
+    />
     <view
       v-else-if="loadError"
       class="error-state"
     >
       <text>{{ loadError }}</text>
-      <button
-        class="error-retry"
-        @tap="refresh"
-      >
-        重试
-      </button>
+      <BaseButton
+        variant="danger-ghost"
+        size="small"
+        text="重试"
+        @click="refresh"
+      />
     </view>
     <EmptyState
       v-else-if="notFound"
@@ -41,44 +39,52 @@
         v-if="canEdit && showEditor"
         title="编辑集盒"
       >
-        <input
-          v-model="editDraft.title"
-          class="field"
-          maxlength="120"
-          placeholder="集盒标题"
-          :focus="editorFocused"
+        <BaseForm
+          :data="editDraft"
+          :show-error-message="false"
         >
-        <textarea
-          v-model="editDraft.description"
-          class="field textarea"
-          placeholder="集盒简介"
-        />
-        <button
-          class="primary-button"
+          <BaseField
+            v-model="editDraft.title"
+            name="title"
+            label="集盒标题"
+            maxlength="120"
+            placeholder="集盒标题"
+            :focus="editorFocused"
+          />
+          <BaseField
+            v-model="editDraft.description"
+            name="description"
+            label="集盒简介"
+            type="textarea"
+            placeholder="集盒简介"
+          />
+        </BaseForm>
+        <BaseButton
+          block
+          text="保存标题和简介"
           :disabled="savingMeta"
-          @tap="saveMetadata"
-        >
-          {{ savingMeta ? '保存中…' : '保存标题和简介' }}
-        </button>
+          :loading="savingMeta"
+          @click="saveMetadata"
+        />
 
         <view class="search-block">
           <view class="editor-label">
             搜索并添加义项
           </view>
           <view class="search-row">
-            <input
+            <BaseField
               v-model="flavorSearch"
-              class="field search-field"
-              confirm-type="search"
+              name="flavor-search"
+              label=""
               placeholder="义项名称、释义或写法"
+              clearable
               @confirm="findFlavors"
-            >
-            <button
-              class="small-button"
-              @tap="findFlavors"
-            >
-              搜索
-            </button>
+            />
+            <BaseButton
+              size="small"
+              text="搜索"
+              @click="findFlavors"
+            />
           </view>
           <view
             v-for="candidate in flavorCandidates"
@@ -96,13 +102,13 @@
                 {{ candidate.definition || '暂无释义' }}
               </text>
             </view>
-            <button
-              class="candidate-button"
+            <BaseButton
+              variant="ghost"
+              size="small"
+              :text="hasFlavor(candidate.id) ? '已添加' : '添加'"
               :disabled="contentBusy || hasFlavor(candidate.id)"
-              @tap="changeContent('flavor', candidate.id, 'add')"
-            >
-              {{ hasFlavor(candidate.id) ? '已添加' : '添加' }}
-            </button>
+              @click="changeContent('flavor', candidate.id, 'add')"
+            />
           </view>
         </view>
 
@@ -111,19 +117,19 @@
             搜索并添加罐头
           </view>
           <view class="search-row">
-            <input
+            <BaseField
               v-model="canSearch"
-              class="field search-field"
-              confirm-type="search"
+              name="can-search"
+              label=""
               placeholder="罐头概念或铭牌文字"
+              clearable
               @confirm="findCans"
-            >
-            <button
-              class="small-button"
-              @tap="findCans"
-            >
-              搜索
-            </button>
+            />
+            <BaseButton
+              size="small"
+              text="搜索"
+              @click="findCans"
+            />
           </view>
           <view
             v-for="candidate in canCandidates"
@@ -136,13 +142,13 @@
                 @open="toCan"
               >
                 <template #action-right>
-                  <button
-                    class="candidate-button"
+                  <BaseButton
+                    variant="ghost"
+                    size="small"
+                    :text="hasCan(candidate.id) ? '已添加' : '加入集盒'"
                     :disabled="contentBusy || hasCan(candidate.id)"
-                    @tap="changeContent('can', candidate.id, 'add')"
-                  >
-                    {{ hasCan(candidate.id) ? '已添加' : '加入集盒' }}
-                  </button>
+                    @click="changeContent('can', candidate.id, 'add')"
+                  />
                 </template>
               </CanCard>
             </view>
@@ -169,14 +175,14 @@
               @open="toFlavor(flavor.id)"
             />
           </view>
-          <button
+          <BaseButton
             v-if="canEdit && showEditor"
-            class="remove-button"
+            variant="danger-ghost"
+            size="small"
+            text="移除"
             :disabled="contentBusy"
-            @tap="changeContent('flavor', flavor.id, 'remove')"
-          >
-            移除
-          </button>
+            @click="changeContent('flavor', flavor.id, 'remove')"
+          />
         </view>
       </SectionBlock>
 
@@ -196,26 +202,25 @@
               @open="toCan"
             />
           </view>
-          <button
+          <BaseButton
             v-if="canEdit && showEditor"
-            class="remove-button"
+            variant="danger-ghost"
+            size="small"
+            text="移除"
             :disabled="contentBusy"
-            @tap="changeContent('can', can.id, 'remove')"
-          >
-            移除
-          </button>
+            @click="changeContent('can', can.id, 'remove')"
+          />
         </view>
       </SectionBlock>
       <view
         v-if="canEdit"
         class="shelf-edit-bar"
       >
-        <button
-          class="edit-toggle-button"
-          @tap="toggleEditor"
-        >
-          {{ showEditor ? '退出编辑' : '编辑' }}
-        </button>
+        <BaseButton
+          block
+          :text="showEditor ? '退出编辑' : '编辑'"
+          @click="toggleEditor"
+        />
       </view>
       <view class="edit-spacer" />
     </template>
@@ -224,8 +229,13 @@
 
 <script>
 import CanCard from '@/components/CanCard.vue';
+import BaseButton from '@/components/BaseButton.vue';
+import BaseField from '@/components/BaseField.vue';
+import BaseForm from '@/components/BaseForm.vue';
+import BaseLoading from '@/components/BaseLoading.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import EntityCard from '@/components/EntityCard.vue';
+import confirmDialog from '@/components/ConfirmDialog';
 import PageShell from '@/components/PageShell.vue';
 import SectionBlock from '@/components/SectionBlock.vue';
 import { requireAuth } from '@/services/authGuard';
@@ -258,6 +268,10 @@ function flavorGroupKey(item) {
 export default {
   components: {
     CanCard,
+    BaseButton,
+    BaseField,
+    BaseForm,
+    BaseLoading,
     EmptyState,
     EntityCard,
     PageShell,
@@ -267,12 +281,14 @@ export default {
     return {
       canCandidates: [],
       canSearch: '',
+      canSearchRequestId: 0,
       contentBusy: false,
       currentUser: currentUser(),
       editDraft: { title: '', description: '' },
       editorFocused: false,
       flavorCandidates: [],
       flavorSearch: '',
+      flavorSearchRequestId: 0,
       id: 0,
       loadError: '',
       loading: false,
@@ -362,21 +378,41 @@ export default {
     async findFlavors() {
       const keyword = this.flavorSearch.trim();
       if (!keyword) return;
+      const requestId = this.flavorSearchRequestId + 1;
+      this.flavorSearchRequestId = requestId;
       try {
         const response = await searchGuantou(keyword, { limit: 20 });
-        this.flavorCandidates = response.flavors || [];
+        if (requestId !== this.flavorSearchRequestId) return;
+        const seen = new Set();
+        this.flavorCandidates = (response.flavors || []).filter((item) => {
+          if (!item?.id || seen.has(item.id)) return false;
+          seen.add(item.id);
+          return true;
+        });
       } catch (error) {
-        uni.showToast({ title: '义项搜索失败', icon: 'none' });
+        if (requestId === this.flavorSearchRequestId) {
+          uni.showToast({ title: '义项搜索失败', icon: 'none' });
+        }
       }
     },
     async findCans() {
       const keyword = this.canSearch.trim();
       if (!keyword) return;
+      const requestId = this.canSearchRequestId + 1;
+      this.canSearchRequestId = requestId;
       try {
         const response = await searchGuantou(keyword, { limit: 20 });
-        this.canCandidates = response.cans || [];
+        if (requestId !== this.canSearchRequestId) return;
+        const seen = new Set();
+        this.canCandidates = (response.cans || []).filter((item) => {
+          if (!item?.id || seen.has(item.id)) return false;
+          seen.add(item.id);
+          return true;
+        });
       } catch (error) {
-        uni.showToast({ title: '罐头搜索失败', icon: 'none' });
+        if (requestId === this.canSearchRequestId) {
+          uni.showToast({ title: '罐头搜索失败', icon: 'none' });
+        }
       }
     },
     hasFlavor(id) {
@@ -390,6 +426,14 @@ export default {
     },
     async changeContent(kind, id, mode) {
       if (this.contentBusy || !this.canEdit) return;
+      if (mode === 'remove') {
+        const confirmed = await confirmDialog({
+          title: '确认移除成员？',
+          content: '移除后可再次添加，不会删除原始内容。',
+          danger: true,
+        });
+        if (!confirmed) return;
+      }
       this.contentBusy = true;
       try {
         const latest = await getShelf(this.id);

@@ -7,20 +7,20 @@
       >
         ‹
       </text>
-      <input
+      <BaseField
         v-model="localKeyword"
-        class="search-input"
+        name="search"
+        label=""
         placeholder="搜索义项、写法、罐头"
-        :focus="true"
-        confirm-type="search"
+        clearable
+        focus
         @confirm="submitSearch"
-      >
-      <button
-        class="search-button"
-        @tap="submitSearch"
-      >
-        搜索
-      </button>
+      />
+      <BaseButton
+        size="small"
+        text="搜索"
+        @click="submitSearch"
+      />
     </view>
 
     <scroll-view
@@ -97,12 +97,10 @@
           action-text="重新搜索"
           @action="submitSearch"
         />
-        <view
+        <BaseLoading
           v-else-if="loading"
-          class="search-status"
-        >
-          正在搜索…
-        </view>
+          text="正在搜索…"
+        />
         <template v-else>
           <ResultSection
             title="义项"
@@ -183,6 +181,9 @@
 
 <script>
 import CanCard from './CanCard.vue';
+import BaseButton from './BaseButton.vue';
+import BaseField from './BaseField.vue';
+import BaseLoading from './BaseLoading.vue';
 import EmptyState from './EmptyState.vue';
 import EntityCard from './EntityCard.vue';
 import ResultSection from './ResultSection.vue';
@@ -193,6 +194,9 @@ export default {
   name: 'SearchPanel',
   components: {
     CanCard,
+    BaseButton,
+    BaseField,
+    BaseLoading,
     EmptyState,
     EntityCard,
     ResultSection,
@@ -310,12 +314,6 @@ export default {
   min-height: 100vh;
   background: #f6f7f3;
   color: #1d2a24;
-}
-
-.search-status {
-  padding: 80rpx 30rpx;
-  color: #66736b;
-  text-align: center;
 }
 
 .searchbar {

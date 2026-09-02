@@ -3,35 +3,39 @@
     title="搜索"
     :scroll="true"
   >
-    <view class="search-row">
-      <input
-        :value="keywords"
-        class="search-input"
-        placeholder="搜索罐头、铭牌、义项、写法"
-        :focus="true"
-        confirm-type="search"
-        @input="onKeywordInput"
-        @confirm="submitSearch"
-      >
-      <button
-        class="search-button"
-        @tap="submitSearch"
-      >
-        搜索
-      </button>
-    </view>
+    <template #before>
+      <view class="search-controls">
+        <view class="search-row">
+          <BaseField
+            v-model="keywords"
+            name="search"
+            label=""
+            placeholder="搜索罐头、铭牌、义项、写法"
+            clearable
+            focus
+            @change="onKeywordInput"
+            @confirm="submitSearch"
+          />
+          <BaseButton
+            size="small"
+            text="搜索"
+            @click="submitSearch"
+          />
+        </view>
 
-    <view class="search-tabs">
-      <view
-        v-for="tab in tabs"
-        :key="tab.value"
-        class="tab"
-        :class="{ active: activeTab === tab.value }"
-        @tap="selectTab(tab.value)"
-      >
-        {{ tab.label }}
+        <view class="search-tabs">
+          <view
+            v-for="tab in tabs"
+            :key="tab.value"
+            class="tab"
+            :class="{ active: activeTab === tab.value }"
+            @tap="selectTab(tab.value)"
+          >
+            {{ tab.label }}
+          </view>
+        </view>
       </view>
-    </view>
+    </template>
 
     <view v-if="!hasSearched">
       <SectionBlock
@@ -104,19 +108,30 @@
         @action="submitSearch"
       />
       <view
-        v-else-if="searchLoading"
-        class="skeleton-list"
+        v-else-if="activePage.loading"
+        class="result-skeleton-list"
+        :aria-label="`正在预加载${activeTabLabel}卡片`"
       >
         <view
-          v-for="index in 3"
+          v-for="index in 6"
           :key="index"
-          class="skeleton-card"
-        />
+          class="result-skeleton-card"
+        >
+          <view class="result-skeleton-line result-skeleton-line--title" />
+          <view class="result-skeleton-line result-skeleton-line--body" />
+          <view class="result-skeleton-line result-skeleton-line--meta" />
+          <text class="result-skeleton-text">
+            正在加载{{ activeTabLabel }}卡片…
+          </text>
+        </view>
       </view>
+      <BaseLoading
+        v-else-if="searchLoading"
+        text="正在搜索…"
+      />
       <template v-else-if="hasVisibleResults">
         <SectionBlock
           v-if="showCans"
-          title="罐头"
         >
           <CanCard
             v-for="item in visibleItems('cans')"
@@ -124,18 +139,10 @@
             :can="item"
             @open="openCan"
           />
-          <button
-            v-if="hasMore('cans')"
-            class="expand-button"
-            @tap="toggleSection('cans')"
-          >
-            {{ expandedSections.cans ? '收起' : `展开剩余 ${remainingCount('cans')} 条` }}
-          </button>
         </SectionBlock>
 
         <SectionBlock
           v-if="showNameplates"
-          title="铭牌"
         >
           <EntityCard
             v-for="item in visibleItems('nameplates')"
@@ -147,18 +154,10 @@
             :item="{ ...item, scope: 'nameplates' }"
             @open="openItem"
           />
-          <button
-            v-if="hasMore('nameplates')"
-            class="expand-button"
-            @tap="toggleSection('nameplates')"
-          >
-            {{ expandedSections.nameplates ? '收起' : `展开剩余 ${remainingCount('nameplates')} 条` }}
-          </button>
         </SectionBlock>
 
         <SectionBlock
           v-if="showFlavors"
-          title="义项"
         >
           <view
             v-for="item in visibleItems('flavors')"
@@ -184,18 +183,10 @@
               {{ item.definition }}
             </view>
           </view>
-          <button
-            v-if="hasMore('flavors')"
-            class="expand-button"
-            @tap="toggleSection('flavors')"
-          >
-            {{ expandedSections.flavors ? '收起' : `展开剩余 ${remainingCount('flavors')} 条` }}
-          </button>
         </SectionBlock>
 
         <SectionBlock
           v-if="showPackages"
-          title="写法"
         >
           <EntityCard
             v-for="item in visibleItems('packages')"
@@ -207,22 +198,48 @@
             :item="{ ...item, scope: 'packages' }"
             @open="openItem"
           />
-          <button
-            v-if="hasMore('packages')"
-            class="expand-button"
-            @tap="toggleSection('packages')"
-          >
-            {{ expandedSections.packages ? '收起' : `展开剩余 ${remainingCount('packages')} 条` }}
-          </button>
         </SectionBlock>
+
+        <view class="result-pagination">
+          <text class="result-page-summary">
+            第 {{ activePage.page }} / {{ activePageCount }} 页 · 共 {{ activePage.count }} 条
+          </text>
+          <view class="result-page-actions">
+            <BaseButton
+              variant="ghost"
+              size="small"
+              text="上一页"
+              :disabled="!activePage.previous || activePage.loading"
+              @click="changeResultPage(activePage.page - 1)"
+            />
+            <BaseButton
+              size="small"
+              text="下一页"
+              :disabled="!activePage.next || activePage.loading"
+              @click="changeResultPage(activePage.page + 1)"
+            />
+          </view>
+          <view
+            v-if="activePage.error"
+            class="result-page-error"
+          >
+            {{ activePage.error }}
+          </view>
+          <view
+            v-else-if="!activePage.next"
+            class="result-page-end"
+          >
+            已经到底了
+          </view>
+        </view>
       </template>
       <SectionBlock
         v-else
         :empty="true"
         empty-title="这个栏目暂时没有结果"
-        :empty-description="activeTab === 'all' ? '换个写法试试，或者先装一罐。' : '可以切换到全部看看其他类型的结果。'"
-        :empty-action-text="activeTab === 'all' ? '装一罐' : '查看全部'"
-        @empty-action="activeTab === 'all' ? toCreateCan() : selectTab('all')"
+        empty-description="换个写法试试，或者切换到其他类型看看。"
+        :empty-action-text="activeTab === 'cans' ? '装一罐' : '查看罐头'"
+        @empty-action="activeTab === 'cans' ? toCreateCan() : selectTab('cans')"
       />
     </view>
   </PageShell>
@@ -230,13 +247,20 @@
 
 <script>
 import CanCard from '@/components/CanCard.vue';
+import BaseButton from '@/components/BaseButton.vue';
+import BaseField from '@/components/BaseField.vue';
+import BaseLoading from '@/components/BaseLoading.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import EntityCard from '@/components/EntityCard.vue';
 import PageShell from '@/components/PageShell.vue';
 import SectionBlock from '@/components/SectionBlock.vue';
 import { APP_NAME } from '@/const/branding';
 import {
+  listCans,
+  listFlavors,
   listHotSearches,
+  listNameplates,
+  listPackages,
   searchGuantou,
   suggestGuantou,
 } from '@/services/guantou';
@@ -249,6 +273,51 @@ import {
 import { defaultMessage } from '@/services/shareMessages';
 
 const SUGGEST_DEBOUNCE_MS = 300;
+const RESULT_PAGE_SIZE = 20;
+const RESULT_SKELETON_MIN_MS = 400;
+const RESULT_SECTIONS = ['cans', 'nameplates', 'flavors', 'packages'];
+const RESULT_FETCHERS = {
+  cans: listCans,
+  nameplates: listNameplates,
+  flavors: listFlavors,
+  packages: listPackages,
+};
+
+function waitForResultSkeleton() {
+  return new Promise((resolve) => {
+    setTimeout(resolve, RESULT_SKELETON_MIN_MS);
+  });
+}
+
+function emptyPageState() {
+  return {
+    count: 0,
+    error: '',
+    loading: false,
+    next: null,
+    page: 1,
+    previous: null,
+  };
+}
+
+function emptyResultPages() {
+  return RESULT_SECTIONS.reduce((pages, section) => ({
+    ...pages,
+    [section]: emptyPageState(),
+  }), {});
+}
+
+function pageStateFromResponse(response, page = 1) {
+  const results = response.results || response || [];
+  return {
+    count: Number(response.count ?? results.length),
+    error: '',
+    loading: false,
+    next: response.next || null,
+    page,
+    previous: response.previous || null,
+  };
+}
 
 function emptyResults() {
   return {
@@ -296,6 +365,9 @@ function uniqueById(items) {
 export default {
   components: {
     CanCard,
+    BaseButton,
+    BaseField,
+    BaseLoading,
     EmptyState,
     EntityCard,
     PageShell,
@@ -303,13 +375,7 @@ export default {
   },
   data() {
     return {
-      activeTab: 'all',
-      expandedSections: {
-        cans: false,
-        flavors: false,
-        nameplates: false,
-        packages: false,
-      },
+      activeTab: 'cans',
       expandedFlavorPronunciations: [],
       hasSearched: false,
       hotTags: [],
@@ -321,17 +387,32 @@ export default {
       suggestRequestId: 0,
       suggestTimer: null,
       searchLoading: false,
+      searchRequestId: 0,
       searchError: '',
       results: emptyResults(),
+      resultPages: emptyResultPages(),
+      resultRequestIds: RESULT_SECTIONS.reduce((ids, section) => ({
+        ...ids,
+        [section]: 0,
+      }), {}),
       tabs: [
-        { label: '全部', value: 'all' },
         { label: '罐头', value: 'cans' },
+        { label: '铭牌', value: 'nameplates' },
         { label: '义项', value: 'flavors' },
         { label: '写法', value: 'packages' },
       ],
     };
   },
   computed: {
+    activeTabLabel() {
+      return this.tabs.find((tab) => tab.value === this.activeTab)?.label || '';
+    },
+    activePage() {
+      return this.resultPages[this.activeTab] || emptyPageState();
+    },
+    activePageCount() {
+      return Math.max(1, Math.ceil(this.activePage.count / RESULT_PAGE_SIZE));
+    },
     totalResults() {
       return (this.results.flavors || []).length
         + (this.results.packages || []).length
@@ -339,19 +420,16 @@ export default {
         + (this.results.cans || []).length;
     },
     showCans() {
-      return this.results.cans.length
-        && (this.activeTab === 'all' || this.activeTab === 'cans');
+      return this.activeTab === 'cans' && this.results.cans.length;
     },
     showFlavors() {
-      return this.results.flavors.length
-        && (this.activeTab === 'all' || this.activeTab === 'flavors');
+      return this.activeTab === 'flavors' && this.results.flavors.length;
     },
     showPackages() {
-      return this.results.packages.length
-        && (this.activeTab === 'all' || this.activeTab === 'packages');
+      return this.activeTab === 'packages' && this.results.packages.length;
     },
     showNameplates() {
-      return this.activeTab === 'all' && (this.results.nameplates || []).length;
+      return this.activeTab === 'nameplates' && (this.results.nameplates || []).length;
     },
     groupedFlavors() {
       const groups = new Map();
@@ -419,21 +497,113 @@ export default {
         return;
       }
       this.keywords = search;
+      const requestId = this.searchRequestId + 1;
+      this.searchRequestId = requestId;
+      this.resultRequestIds = RESULT_SECTIONS.reduce((ids, section) => ({
+        ...ids,
+        [section]: this.resultRequestIds[section] + 1,
+      }), {});
       this.suggestRequestId += 1;
       this.clearSuggestTimer();
       this.searchLoading = true;
+      this.resultPages = RESULT_SECTIONS.reduce((pages, section) => ({
+        ...pages,
+        [section]: { ...emptyPageState(), loading: true },
+      }), {});
       this.searchError = '';
       this.results = emptyResults();
       this.hasSearched = true;
       try {
-        this.results = await searchGuantou(search);
+        const responses = await Promise.all([
+          searchGuantou(search, { limit: RESULT_PAGE_SIZE }),
+          ...RESULT_SECTIONS.map((section) => RESULT_FETCHERS[section]({
+            search,
+            page: 1,
+            page_size: RESULT_PAGE_SIZE,
+          })),
+          waitForResultSkeleton(),
+        ]);
+        if (requestId !== this.searchRequestId) return;
+        const pageResponses = responses.slice(1, 1 + RESULT_SECTIONS.length);
+        this.results = RESULT_SECTIONS.reduce((results, section, index) => ({
+          ...results,
+          [section]: pageResponses[index].results || pageResponses[index] || [],
+        }), {});
+        this.resultPages = RESULT_SECTIONS.reduce((pages, section, index) => ({
+          ...pages,
+          [section]: pageStateFromResponse(pageResponses[index]),
+        }), {});
         this.suggestions = [];
         this.lastSearchedKeyword = search;
         this.recordHistory(search);
       } catch (error) {
-        this.searchError = '网络开小差了，请稍后再试。';
+        if (requestId === this.searchRequestId) {
+          this.searchError = '网络开小差了，请稍后再试。';
+        }
       } finally {
-        this.searchLoading = false;
+        if (requestId === this.searchRequestId) {
+          this.searchLoading = false;
+          this.resultPages = RESULT_SECTIONS.reduce((pages, section) => ({
+            ...pages,
+            [section]: { ...this.resultPages[section], loading: false },
+          }), {});
+        }
+      }
+    },
+    async changeResultPage(page) {
+      const section = this.activeTab;
+      const state = this.resultPages[section];
+      const targetPage = Number(page);
+      const pageCount = Math.max(1, Math.ceil(state.count / RESULT_PAGE_SIZE));
+      if (
+        state.loading
+        || !Number.isInteger(targetPage)
+        || targetPage < 1
+        || targetPage > pageCount
+      ) return;
+      const keyword = this.lastSearchedKeyword || this.keywords.trim();
+      if (!keyword) return;
+      const requestId = this.resultRequestIds[section] + 1;
+      this.resultRequestIds[section] = requestId;
+      this.resultPages = {
+        ...this.resultPages,
+        [section]: { ...state, error: '', loading: true },
+      };
+      try {
+        const [response] = await Promise.all([
+          RESULT_FETCHERS[section]({
+            search: keyword,
+            page: targetPage,
+            page_size: RESULT_PAGE_SIZE,
+          }),
+          waitForResultSkeleton(),
+        ]);
+        if (requestId !== this.resultRequestIds[section]) return;
+        this.results = {
+          ...this.results,
+          [section]: response.results || response || [],
+        };
+        this.resultPages = {
+          ...this.resultPages,
+          [section]: pageStateFromResponse(response, targetPage),
+        };
+      } catch (error) {
+        if (requestId === this.resultRequestIds[section]) {
+          this.resultPages = {
+            ...this.resultPages,
+            [section]: {
+              ...this.resultPages[section],
+              error: '这一页加载失败，请重试。',
+            },
+          };
+        }
+      } finally {
+        if (requestId === this.resultRequestIds[section]) {
+          this.resultPages = {
+            ...this.resultPages,
+            [section]: { ...this.resultPages[section], loading: false },
+          };
+        }
       }
     },
     async suggest(keyword) {
@@ -455,6 +625,9 @@ export default {
         this.clearSuggestTimer();
         this.suggestRequestId += 1;
         this.suggestions = [];
+        RESULT_SECTIONS.forEach((section) => {
+          this.resultRequestIds[section] += 1;
+        });
       } else {
         this.queueSuggest(keyword);
       }
@@ -484,30 +657,9 @@ export default {
     },
     visibleItems(section) {
       if (section === 'flavors') {
-        if (this.activeTab !== 'all' || this.expandedSections.flavors) {
-          return this.groupedFlavors;
-        }
-        return this.groupedFlavors.slice(0, 1);
+        return this.groupedFlavors;
       }
-      if (this.activeTab !== 'all' || this.expandedSections[section]) {
-        return this.results[section] || [];
-      }
-      return (this.results[section] || []).slice(0, 1);
-    },
-    hasMore(section) {
-      if (section === 'flavors') {
-        return this.activeTab === 'all' && this.groupedFlavors.length > 1;
-      }
-      return this.activeTab === 'all' && (this.results[section] || []).length > 1;
-    },
-    remainingCount(section) {
-      if (section === 'flavors') {
-        return Math.max(0, this.groupedFlavors.length - 1);
-      }
-      return Math.max(0, (this.results[section] || []).length - 1);
-    },
-    toggleSection(section) {
-      this.expandedSections[section] = !this.expandedSections[section];
+      return this.results[section] || [];
     },
     loadHistory() {
       try {
@@ -635,18 +787,35 @@ export default {
 </script>
 
 <style scoped>
+.search-controls {
+  flex: 0 0 auto;
+  padding: 28rpx 28rpx var(--space-2);
+  border-bottom: 1px solid var(--border-color);
+  background: var(--page-color);
+  box-sizing: border-box;
+}
+
 .search-row {
   display: grid;
   grid-template-columns: 1fr auto;
+  align-items: center;
   gap: var(--space-2);
   margin-bottom: var(--space-3);
+}
+
+.search-row :deep(.base-field) {
+  --td-form-item-vertical-padding: 0;
+}
+
+.search-row :deep(.base-button.t-button) {
+  min-height: 80rpx;
 }
 
 .search-tabs {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  margin-bottom: 0;
 }
 
 .tab {
@@ -713,17 +882,86 @@ export default {
   border: 0;
 }
 
-.skeleton-list {
+.result-skeleton-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
 }
 
-.skeleton-card {
-  height: 170rpx;
+.result-skeleton-card {
+  padding: var(--space-3);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
+  background: var(--surface-color);
+}
+
+.result-skeleton-line {
+  height: 24rpx;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-pill);
   background: var(--surface-subtle-color);
-  animation: skeleton-pulse 1.2s ease-in-out infinite;
+  animation: result-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.result-skeleton-line--title {
+  width: 42%;
+  height: 32rpx;
+}
+
+.result-skeleton-line--body {
+  width: 76%;
+}
+
+.result-skeleton-line--meta {
+  width: 58%;
+}
+
+.result-skeleton-text {
+  color: var(--muted-color);
+  font-size: var(--font-size-xs);
+  animation: result-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.result-pagination {
+  margin-bottom: var(--space-3);
+  padding: var(--space-3);
+  border-top: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
+  text-align: center;
+}
+
+.result-page-summary,
+.result-page-end,
+.result-page-error {
+  display: block;
+  color: var(--muted-color);
+  font-size: var(--font-size-xs);
+}
+
+.result-page-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+}
+
+.result-page-error {
+  color: var(--danger-color);
+}
+
+.result-page-end {
+  padding: var(--space-1) 0;
+}
+
+@keyframes result-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .expand-button {
@@ -886,16 +1124,6 @@ export default {
   transform: scale(0.97);
 }
 
-@keyframes skeleton-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .search-input,
   .search-button,
@@ -904,7 +1132,8 @@ export default {
   .tag {
     transition: none;
   }
-  .skeleton-card {
+  .result-skeleton-line,
+  .result-skeleton-text {
     animation: none;
   }
 }

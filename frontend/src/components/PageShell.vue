@@ -1,7 +1,10 @@
 <template>
   <view
     class="page-shell"
-    :class="`theme-${resolvedTheme}`"
+    :class="[
+      `theme-${resolvedTheme}`,
+      { 'page-shell--scroll': scroll },
+    ]"
   >
     <view class="shell-topbar">
       <text
@@ -119,7 +122,16 @@ export default {
   color: var(--text-color);
 }
 
+.page-shell--scroll {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .shell-topbar {
+  flex: 0 0 auto;
   height: 96rpx;
   display: grid;
   grid-template-columns: 56rpx 1fr auto;
@@ -164,6 +176,8 @@ export default {
 }
 
 .shell-scroll {
-  height: calc(100vh - 96rpx);
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
 }
 </style>

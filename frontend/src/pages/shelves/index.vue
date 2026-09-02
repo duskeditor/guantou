@@ -18,18 +18,29 @@
       <view class="form-title">
         新建集盒
       </view>
-      <input
-        v-model="draft.title"
-        class="field"
-        maxlength="120"
-        placeholder="标题（必填）"
-        :focus="createTitleFocused"
+      <BaseForm
+        :data="draft"
+        :show-error-message="false"
       >
-      <textarea
-        v-model="draft.description"
-        class="field textarea"
-        placeholder="简介（选填）"
-      />
+        <BaseField
+          v-model="draft.title"
+          name="title"
+          label="标题"
+          maxlength="120"
+          placeholder="标题（必填）"
+          required
+          :focus="createTitleFocused"
+          :disabled="creating"
+        />
+        <BaseField
+          v-model="draft.description"
+          name="description"
+          label="简介"
+          type="textarea"
+          placeholder="简介（选填）"
+          :disabled="creating"
+        />
+      </BaseForm>
       <view
         v-if="createError"
         class="field-error"
@@ -37,44 +48,36 @@
         {{ createError }}
       </view>
       <view class="form-actions">
-        <button
-          class="secondary-button"
+        <BaseButton
+          variant="light"
+          text="取消"
           :disabled="creating"
-          @tap="closeCreate"
-        >
-          取消
-        </button>
-        <button
-          class="primary-button"
+          @click="closeCreate"
+        />
+        <BaseButton
+          text="创建集盒"
           :disabled="creating"
-          @tap="submitCreate"
-        >
-          {{ creating ? '创建中…' : '创建集盒' }}
-        </button>
+          :loading="creating"
+          @click="submitCreate"
+        />
       </view>
     </view>
 
-    <view
+    <BaseLoading
       v-if="loading"
-      class="skeleton-list"
-    >
-      <view
-        v-for="index in 3"
-        :key="index"
-        class="skeleton-card"
-      />
-    </view>
+      text="正在加载集盒…"
+    />
     <view
       v-else-if="loadError"
       class="error-state"
     >
       <text>{{ loadError }}</text>
-      <button
-        class="error-retry"
-        @tap="refresh"
-      >
-        重试
-      </button>
+      <BaseButton
+        variant="danger-ghost"
+        size="small"
+        text="重试"
+        @click="refresh"
+      />
     </view>
     <template v-else>
       <EntityCard
@@ -101,6 +104,10 @@
 
 <script>
 import AppShell from '@/components/AppShell.vue';
+import BaseButton from '@/components/BaseButton.vue';
+import BaseField from '@/components/BaseField.vue';
+import BaseForm from '@/components/BaseForm.vue';
+import BaseLoading from '@/components/BaseLoading.vue';
 import EntityCard from '@/components/EntityCard.vue';
 import SectionBlock from '@/components/SectionBlock.vue';
 import { requireAuth } from '@/services/authGuard';
@@ -120,6 +127,10 @@ function blankDraft() {
 export default {
   components: {
     AppShell,
+    BaseButton,
+    BaseField,
+    BaseForm,
+    BaseLoading,
     EntityCard,
     SectionBlock,
   },
@@ -226,26 +237,6 @@ export default {
   font-weight: 700;
 }
 
-.field {
-  width: 100%;
-  box-sizing: border-box;
-  min-height: 96rpx;
-  margin-bottom: var(--space-2);
-  padding: 0 var(--space-3);
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  line-height: 96rpx;
-  font-size: var(--font-size-base);
-}
-
-.textarea {
-  min-height: 130rpx;
-  padding: 18rpx;
-  line-height: 1.5;
-  font-size: var(--font-size-base);
-}
-
 .field-error {
   margin-bottom: 14rpx;
   color: var(--danger-color);
@@ -258,7 +249,7 @@ export default {
   gap: var(--space-2);
 }
 
-.form-actions button {
+.form-actions :deep(.t-button) {
   width: 100%;
   margin: 0;
   font-size: var(--font-size-sm);
@@ -267,32 +258,9 @@ export default {
     opacity 180ms ease;
 }
 
-.form-actions button:active {
+.form-actions :deep(.t-button:active) {
   opacity: 0.82;
   transform: scale(0.99);
-}
-
-.primary-button {
-  background: var(--accent-color);
-  color: var(--on-accent-color);
-}
-
-.secondary-button {
-  background: var(--surface-subtle-color);
-  color: var(--text-secondary-color);
-}
-
-.skeleton-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.skeleton-card {
-  height: 170rpx;
-  border-radius: var(--radius-md);
-  background: var(--surface-subtle-color);
-  animation: skeleton-pulse 1.2s ease-in-out infinite;
 }
 
 .error-state {
@@ -306,34 +274,9 @@ export default {
   color: var(--danger-color);
 }
 
-.error-retry {
-  margin: 0;
-  padding: 0 var(--space-3);
-  background: transparent;
-  color: var(--danger-color);
-  font-size: var(--font-size-sm);
-}
-
-.error-retry::after {
-  border: 0;
-}
-
-@keyframes skeleton-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .form-actions button {
+  .form-actions :deep(.t-button) {
     transition: none;
-  }
-  .skeleton-card {
-    animation: none;
   }
 }
 </style>

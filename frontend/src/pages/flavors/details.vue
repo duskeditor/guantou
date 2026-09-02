@@ -288,13 +288,44 @@ export default {
         }
         return;
       }
-      uni.showActionSheet({
-        itemList: flavorIds.map((id, index) => this.flavorTargetLabel(id, index)),
-        success: ({ tapIndex }) => {
-          const selectedId = flavorIds[Number(tapIndex)];
-          if (selectedId) onSelected(selectedId);
-        },
-      });
+      // For larger aggregates reserve two slots for previous/next navigation;
+      // four flavor entries keeps every WeChat request at six items or fewer.
+      const pageSize = flavorIds.length > 6 ? 4 : 6;
+      const showPage = (page) => {
+        const pageCount = Math.ceil(flavorIds.length / pageSize);
+        const start = page * pageSize;
+        const pageIds = flavorIds.slice(start, start + pageSize);
+        const itemList = pageIds.map((id, index) => this.flavorTargetLabel(id, start + index));
+        const hasPrevious = page > 0;
+        const hasNext = page < pageCount - 1;
+        // Keep every request within WeChat's six-item limit. Navigation entries
+        // consume slots so that any number of aggregate flavors can be reached.
+        if (hasPrevious) itemList.unshift('上一页');
+        if (hasNext) itemList.push('下一页');
+        uni.showActionSheet({
+          itemList,
+          success: ({ tapIndex }) => {
+            const index = Number(tapIndex);
+            if (hasPrevious && index === 0) {
+              showPage(page - 1);
+              return;
+            }
+            const flavorIndex = start + index - (hasPrevious ? 1 : 0);
+            if (hasNext && index === itemList.length - 1) {
+              showPage(page + 1);
+              return;
+            }
+            const selectedId = flavorIds[flavorIndex];
+            if (selectedId) onSelected(selectedId);
+          },
+          fail: () => {
+            if (typeof uni.showToast === 'function') {
+              uni.showToast({ title: '请选择具体义项后再操作', icon: 'none' });
+            }
+          },
+        });
+      };
+      showPage(0);
     },
     resolveFlavorTarget(targetId, onSelected) {
       if (typeof onSelected !== 'function') return;

@@ -17,7 +17,7 @@ export const ROUTES = Object.freeze({
   circleDetail: '/pages/circles/details',
   discovery: '/pages/discovery/index',
   flavorDetail: '/pages/flavors/details',
-  packageList: '/pages/packages/index',
+  packageList: '/pages/flavors/index',
   packageDetail: '/pages/packages/details',
   postCompose: '/pages/posts/compose',
   postDetail: '/pages/posts/details',
@@ -106,7 +106,11 @@ export const goCircleList = () => openPage(ROUTES.circleList);
 export const goCircleDetail = (id) => openPage(ROUTES.circleDetail, { id });
 export const goDiscovery = () => openPage(ROUTES.discovery);
 export const goFlavorDetail = (id) => openPage(ROUTES.flavorDetail, { id });
-export const goPackageList = () => openPage(ROUTES.packageList);
+export const goPackageList = (options = {}) => openPage(
+  ROUTES.packageList,
+  { view: 'packages' },
+  options,
+);
 export const goPackageDetail = (id) => openPage(ROUTES.packageDetail, { id });
 export const goPostDetail = (id, options = {}) => openPage(ROUTES.postDetail, { id }, options);
 export const goPostCompose = (canId) => openPage(ROUTES.postCompose, { can_id: canId });

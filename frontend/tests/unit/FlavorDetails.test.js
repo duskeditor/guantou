@@ -144,4 +144,38 @@ describe('flavor details aggregate behavior', () => {
     });
     expect(goPronunciationCreate).toHaveBeenCalledWith(2);
   });
+
+  it('paginates aggregate flavor choices beyond WeChat\'s six-item limit', () => {
+    const flavorIds = [1, 2, 3, 4, 5, 6, 7];
+    const page = pageContext({
+      id: 1,
+      flavor: {
+        ...primaryFlavor,
+        flavor_ids: flavorIds,
+        flavor_variants: flavorIds.map((id) => ({ id })),
+      },
+    });
+    const selections = [];
+    page.selectFlavorTarget((id) => selections.push(id));
+
+    const { showActionSheet } = globalThis.uni;
+    expect(showActionSheet).toHaveBeenCalledTimes(1);
+    expect(showActionSheet.mock.calls[0][0].itemList).toHaveLength(5);
+    expect(showActionSheet.mock.calls[0][0].itemList).not.toContain(undefined);
+
+    // The final entry on page one opens page two, rather than exceeding the
+    // platform's six-item limit or silently dropping the callback.
+    showActionSheet.mock.calls[0][0].success({ tapIndex: 4 });
+    expect(showActionSheet).toHaveBeenCalledTimes(2);
+    const secondPage = showActionSheet.mock.calls[1][0];
+    expect(secondPage.itemList).toHaveLength(4);
+    expect(secondPage.itemList[0]).toContain('上一页');
+
+    // Select the first flavor on page two (index zero is "previous page").
+    secondPage.success({ tapIndex: 1 });
+    expect(selections).toEqual([5]);
+    const allPagesFitWeChatLimit = showActionSheet.mock.calls
+      .every(([options]) => options.itemList.length <= 6);
+    expect(allPagesFitWeChatLimit).toBe(true);
+  });
 });

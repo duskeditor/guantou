@@ -53,6 +53,26 @@ describe('PageShell', () => {
     wrapper.unmount();
   });
 
+  it('keeps the before slot outside the independent scroll area', () => {
+    const wrapper = mount(PageShell, {
+      props: { title: '搜索' },
+      global: {
+        stubs: { 'scroll-view': { template: '<div><slot /></div>' } },
+      },
+      slots: {
+        before: '<div class="fixed-controls">搜索控件</div>',
+        default: '<div class="results">搜索结果</div>',
+      },
+    });
+
+    expect(wrapper.classes()).toContain('page-shell--scroll');
+    expect(wrapper.get('.fixed-controls').element.parentElement)
+      .toBe(wrapper.get('.page-shell').element);
+    expect(wrapper.get('.shell-scroll').find('.fixed-controls').exists()).toBe(false);
+    expect(wrapper.get('.shell-scroll').find('.results').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
   it('applies a theme update without browser-only globals', async () => {
     uni.getStorageSync.mockReturnValue('light');
     uni.getSystemInfoSync.mockReturnValue({ theme: 'light' });

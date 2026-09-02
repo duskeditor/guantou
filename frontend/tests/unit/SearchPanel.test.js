@@ -1,7 +1,17 @@
-import { mount } from '@vue/test-utils';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  mount,
+} from '@vue/test-utils';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import SearchPanel from '@/components/SearchPanel.vue';
+import BaseField from '@/components/BaseField.vue';
 
 function mountSearchPanel(props = {}) {
   return mount(SearchPanel, {
@@ -10,7 +20,11 @@ function mountSearchPanel(props = {}) {
       hotTags: ['月亮', '行'],
       historyList: ['膝盖'],
       suggestions: [],
-      results: { flavors: [], packages: [], cans: [] },
+      results: {
+        flavors: [],
+        packages: [],
+        cans: [],
+      },
       ...props,
     },
     global: {
@@ -46,7 +60,9 @@ describe('SearchPanel', () => {
   it('debounces suggestions for 300ms', async () => {
     const wrapper = mountSearchPanel();
 
-    await wrapper.find('input').setValue('moon');
+    const field = wrapper.getComponent(BaseField);
+    field.vm.$emit('update:modelValue', 'moon');
+    await wrapper.vm.$nextTick();
     vi.advanceTimersByTime(299);
     expect(wrapper.emitted('suggest')).toBeUndefined();
 
@@ -70,7 +86,9 @@ describe('SearchPanel', () => {
     const wrapper = mountSearchPanel({
       hasSearched: true,
       results: {
-        flavors: [{ id: 1, name: '月亮', definition: '天体', variants: [], package_links: [] }],
+        flavors: [{
+          id: 1, name: '月亮', definition: '天体', variants: [], package_links: [],
+        }],
         packages: [],
         cans: [],
       },
