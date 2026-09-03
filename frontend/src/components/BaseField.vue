@@ -8,11 +8,7 @@
     :rules="rules"
     label-align="top"
   >
-    <view
-      class="base-field-control"
-      :role="ariaRole || undefined"
-      :aria-label="ariaLabel || undefined"
-    >
+    <view class="base-field-control">
       <t-textarea
         v-if="type === 'textarea'"
         :value="modelValue"
