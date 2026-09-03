@@ -99,6 +99,15 @@ describe('BaseField', () => {
     expect(wrapper.emitted('update:modelValue')[0]).toEqual(['罐头释义']);
     expect(wrapper.emitted('input')[0]).toEqual(['罐头释义']);
   });
+
+  it('forwards TDesign enter events while keeping confirm compatibility', async () => {
+    const wrapper = mount(BaseField, { props: { name: 'search' } });
+    const input = wrapper.findAllComponents({ name: 'TDesignStub' })[1];
+    input.vm.$emit('enter', { value: '月亮' });
+    await wrapper.vm.$nextTick();
+    expect(wrapper.emitted('enter')).toHaveLength(1);
+    expect(wrapper.emitted('confirm')).toHaveLength(1);
+  });
 });
 
 describe('TDesign infrastructure primitives', () => {

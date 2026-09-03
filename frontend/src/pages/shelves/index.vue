@@ -4,13 +4,26 @@
     active="box"
     action-text="创建"
     @action="openCreate"
-    @action-suffix="toSearch"
   >
-    <template #action-suffix>
-      <text class="header-search-icon">
-        ⌕
-      </text>
-    </template>
+    <view class="search-row">
+      <BaseField
+        v-model="search"
+        name="shelf-search"
+        label=""
+        placeholder="搜索集盒名称"
+        aria-role="searchbox"
+        aria-label="搜索集盒"
+        confirm-type="search"
+        clearable
+        @enter="refresh"
+      />
+      <BaseButton
+        class="search-button"
+        size="small"
+        text="搜索"
+        @click="refresh"
+      />
+    </view>
     <view
       v-if="showCreate"
       class="create-card"
@@ -63,10 +76,23 @@
       </view>
     </view>
 
-    <BaseLoading
+    <view
       v-if="loading"
-      text="正在加载集盒…"
-    />
+      class="skeleton-list"
+    >
+      <view
+        v-for="index in 6"
+        :key="index"
+        class="skeleton-card"
+      >
+        <view class="skeleton-line skeleton-line--title" />
+        <view class="skeleton-line skeleton-line--body" />
+        <view class="skeleton-line skeleton-line--meta" />
+        <text class="skeleton-text">
+          正在加载卡片…
+        </text>
+      </view>
+    </view>
     <view
       v-else-if="loadError"
       class="error-state"
@@ -107,12 +133,11 @@ import AppShell from '@/components/AppShell.vue';
 import BaseButton from '@/components/BaseButton.vue';
 import BaseField from '@/components/BaseField.vue';
 import BaseForm from '@/components/BaseForm.vue';
-import BaseLoading from '@/components/BaseLoading.vue';
 import EntityCard from '@/components/EntityCard.vue';
 import SectionBlock from '@/components/SectionBlock.vue';
 import { requireAuth } from '@/services/authGuard';
 import { createShelf, listShelves } from '@/services/guantou';
-import { goSearch, goShelfDetail } from '@/services/navigation';
+import { goShelfDetail } from '@/services/navigation';
 
 export function createShelfSlug(userId, now = Date.now(), random = Math.random()) {
   const owner = Number(userId) || 0;
@@ -130,7 +155,6 @@ export default {
     BaseButton,
     BaseField,
     BaseForm,
-    BaseLoading,
     EntityCard,
     SectionBlock,
   },
@@ -142,6 +166,7 @@ export default {
       draft: blankDraft(),
       loadError: '',
       loading: false,
+      search: '',
       shelves: [],
       showCreate: false,
     };
@@ -151,10 +176,10 @@ export default {
   },
   methods: {
     async refresh() {
-      this.loading = !this.shelves.length;
+      this.loading = true;
       this.loadError = '';
       try {
-        const response = await listShelves();
+        const response = await listShelves({ search: this.search.trim() });
         this.shelves = response.results || response || [];
       } catch (error) {
         this.loadError = '集盒加载没有成功，请稍后再试。';
@@ -210,18 +235,60 @@ export default {
     toDetail(id) {
       goShelfDetail(id);
     },
-    toSearch() {
-      goSearch();
-    },
   },
 };
 </script>
 
 <style scoped>
-.header-search-icon {
-  color: var(--on-immersive-color);
-  font-size: 38rpx;
-  line-height: 1;
+.search-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.search-row :deep(.base-field) {
+  --td-form-item-vertical-padding: 0;
+}
+
+.search-button {
+  min-height: 80rpx;
+  margin: 0;
+  padding: 0 var(--space-3);
+}
+
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.skeleton-card {
+  min-height: 170rpx;
+  padding: var(--space-3);
+  box-sizing: border-box;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
+}
+
+.skeleton-line {
+  height: 24rpx;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-subtle-color);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.skeleton-line--title { width: 42%; height: 32rpx; }
+.skeleton-line--body { width: 76%; }
+.skeleton-line--meta { width: 58%; }
+
+.skeleton-text {
+  color: var(--muted-color);
+  font-size: var(--font-size-xs);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
 }
 
 .create-card {
@@ -274,9 +341,19 @@ export default {
   color: var(--danger-color);
 }
 
+@keyframes skeleton-pulse {
+  0%,
+  100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .form-actions :deep(.t-button) {
     transition: none;
+  }
+  .skeleton-line,
+  .skeleton-text {
+    animation: none;
   }
 }
 </style>

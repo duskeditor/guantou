@@ -13,55 +13,72 @@
       </text>
     </template>
     <view class="search-row">
-      <view class="search-field">
-        <input
-          v-model="search"
-          class="search"
-          :placeholder="searchPlaceholder"
-          @confirm="refresh"
-        >
-      </view>
-      <button
-        class="small-button"
-        @tap="refresh"
-      >
-        搜索
-      </button>
+      <BaseField
+        v-model="search"
+        name="atlas-search"
+        label=""
+        :placeholder="searchPlaceholder"
+        aria-role="searchbox"
+        aria-label="搜索"
+        confirm-type="search"
+        clearable
+        @enter="refresh"
+      />
+      <BaseButton
+        class="search-button"
+        size="small"
+        text="搜索"
+        @click="refresh"
+      />
     </view>
 
-    <picker
-      v-if="showPackages"
-      :range="packageTypeOptions"
-      range-key="label"
-      :value="packageTypeIndex"
-      @change="onPackageTypeChange"
-    >
-      <view class="picker-field">
+    <template v-if="showPackages">
+      <view
+        class="picker-field"
+        @tap="packageTypePickerVisible = true"
+      >
         类型 · {{ packageTypeOptions[packageTypeIndex].label }}
       </view>
-    </picker>
+      <TPicker
+        :visible="packageTypePickerVisible"
+        :value="[packageType]"
+        title="选择写法类型"
+        @change="onPackageTypeChange"
+        @close="packageTypePickerVisible = false"
+      >
+        <TPickerItem :options="packageTypeOptions" />
+      </TPicker>
+    </template>
 
     <view
       v-if="loading"
       class="skeleton-list"
     >
       <view
-        v-for="index in 3"
+        v-for="index in 6"
         :key="index"
         class="skeleton-card"
-      />
+      >
+        <view class="skeleton-line skeleton-line--title" />
+        <view class="skeleton-line skeleton-line--body" />
+        <view class="skeleton-line skeleton-line--meta" />
+        <text class="skeleton-text">
+          正在加载卡片…
+        </text>
+      </view>
     </view>
     <view
       v-else-if="loadError && (!showPackages || !packages.length)"
       class="error-state"
     >
       <text>{{ loadError }}</text>
-      <button
+      <BaseButton
         class="state-retry"
-        @tap="refresh"
-      >
-        重试
-      </button>
+        variant="danger-ghost"
+        size="small"
+        text="重试"
+        @click="refresh"
+      />
     </view>
     <template v-else-if="!showPackages">
       <view
@@ -116,12 +133,13 @@
         class="error-state package-load-more-error"
       >
         <text>{{ loadError }}</text>
-        <button
+        <BaseButton
           class="state-retry"
-          @tap="refreshPackages"
-        >
-          重试
-        </button>
+          variant="danger-ghost"
+          size="small"
+          text="重试"
+          @click="refreshPackages"
+        />
       </view>
       <EntityCard
         v-for="item in packages"
@@ -152,13 +170,16 @@
 
 <script>
 import AppShell from '@/components/AppShell.vue';
+import BaseButton from '@/components/BaseButton.vue';
+import BaseField from '@/components/BaseField.vue';
 import EntityCard from '@/components/EntityCard.vue';
 import SectionBlock from '@/components/SectionBlock.vue';
+import TPicker from '@tdesign/uniapp/picker/picker.vue';
+import TPickerItem from '@tdesign/uniapp/picker-item/picker-item.vue';
 import { listFlavors, listPackages } from '@/services/guantou';
 import {
   goFlavorDetail,
   goPackageDetail,
-  goSearch,
   openPage,
   ROUTES,
 } from '@/services/navigation';
@@ -197,8 +218,12 @@ function uniqueById(items) {
 export default {
   components: {
     AppShell,
+    BaseButton,
+    BaseField,
     EntityCard,
     SectionBlock,
+    TPicker,
+    TPickerItem,
   },
   data() {
     return {
@@ -208,6 +233,7 @@ export default {
       loading: false,
       loadingStatus: 'more',
       packageType: '',
+      packageTypePickerVisible: false,
       packageTypeOptions: PACKAGE_TYPES,
       packages: [],
       page: 1,
@@ -273,7 +299,7 @@ export default {
       await this.refreshFlavors();
     },
     async refreshFlavors() {
-      this.loading = !this.flavors.length;
+      this.loading = true;
       this.loadError = '';
       try {
         const res = await listFlavors({ search: this.search.trim() });
@@ -287,7 +313,7 @@ export default {
     async refreshPackages() {
       this.page = 1;
       this.loadError = '';
-      this.loading = !this.packages.length;
+      this.loading = true;
       this.loadingStatus = 'loading';
       try {
         const response = await listPackages(
@@ -368,7 +394,10 @@ export default {
       return this.packageTypeOptions.find((item) => item.value === value)?.label || value;
     },
     onPackageTypeChange(event) {
-      this.packageType = this.packageTypeOptions[Number(event.detail.value)]?.value || '';
+      const value = event?.detail?.value || event?.value || [];
+      const selected = Array.isArray(value) ? value[0] : value;
+      this.packageType = typeof selected === 'object' ? selected.value : selected || '';
+      this.packageTypePickerVisible = false;
       this.refreshPackages();
     },
     resetPackageFilters() {
@@ -384,7 +413,7 @@ export default {
       goPackageDetail(id);
     },
     toSearch() {
-      goSearch();
+      openPage(ROUTES.search, { tab: this.showPackages ? 'packages' : 'flavors' });
     },
   },
 };
@@ -394,40 +423,19 @@ export default {
 .search-row {
   display: grid;
   grid-template-columns: 1fr auto;
+  align-items: center;
   gap: var(--space-2);
   margin-bottom: var(--space-3);
 }
 
-.search-field {
-  display: flex;
-  align-items: center;
-  min-height: 96rpx;
-  padding: 0 var(--space-3);
-  background: var(--surface-color);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-pill);
-  box-sizing: border-box;
+.search-row :deep(.base-field) {
+  --td-form-item-vertical-padding: 0;
 }
 
 .header-search-icon {
   color: var(--on-immersive-color);
   font-size: 38rpx;
   line-height: 1;
-}
-
-.search,
-.small-button {
-  min-height: 96rpx;
-  line-height: 96rpx;
-}
-
-.search {
-  min-width: 0;
-  flex: 1;
-  padding: 0 var(--space-3);
-  background: transparent;
-  border: 0;
-  font-size: var(--font-size-base);
 }
 
 .picker-field {
@@ -443,7 +451,8 @@ export default {
   line-height: 96rpx;
 }
 
-.small-button {
+.search-button {
+  min-height: 80rpx;
   margin: 0;
   padding: 0 var(--space-3);
   border-radius: var(--radius-pill);
@@ -456,12 +465,12 @@ export default {
     background-color 180ms ease;
 }
 
-.small-button:active {
+.search-button:active {
   opacity: 0.82;
   transform: scale(0.98);
 }
 
-.small-button::after {
+.search-button::after {
   border: 0;
 }
 
@@ -472,9 +481,29 @@ export default {
 }
 
 .skeleton-card {
-  height: 170rpx;
+  min-height: 170rpx;
+  padding: var(--space-3);
+  box-sizing: border-box;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
+  background: var(--surface-color);
+}
+
+.skeleton-line {
+  height: 24rpx;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-pill);
   background: var(--surface-subtle-color);
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.skeleton-line--title { width: 42%; height: 32rpx; }
+.skeleton-line--body { width: 76%; }
+.skeleton-line--meta { width: 58%; }
+
+.skeleton-text {
+  color: var(--muted-color);
+  font-size: var(--font-size-xs);
   animation: skeleton-pulse 1.2s ease-in-out infinite;
 }
 
@@ -603,10 +632,11 @@ export default {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .small-button {
+  .search-button {
     transition: none;
   }
-  .skeleton-card {
+  .skeleton-line,
+  .skeleton-text {
     animation: none;
   }
 }

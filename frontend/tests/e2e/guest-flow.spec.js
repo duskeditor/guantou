@@ -97,6 +97,36 @@ test('guest browses immersive feed, plays audio, and opens search', async ({ pag
       },
     });
   });
+  await page.route(/\/flavors\/?(?:\?.*)?$/, async (route) => {
+    await route.fulfill({
+      json: {
+        count: 1,
+        next: null,
+        previous: null,
+        results: [{
+          id: 21,
+          name: '月亮义项',
+          definition: '地球的天然卫星',
+          pronunciations: [],
+          package_links: [],
+        }],
+      },
+    });
+  });
+  await page.route(/\/nameplates\/?(?:\?.*)?$/, async (route) => {
+    await route.fulfill({
+      json: {
+        count: 0, next: null, previous: null, results: [],
+      },
+    });
+  });
+  await page.route(/\/packages\/?(?:\?.*)?$/, async (route) => {
+    await route.fulfill({
+      json: {
+        count: 0, next: null, previous: null, results: [],
+      },
+    });
+  });
   await page.route('**/discovery/**', async (route) => {
     await route.fulfill({
       json: {
@@ -190,6 +220,7 @@ test('guest browses immersive feed, plays audio, and opens search', async ({ pag
   await expect(page.getByText('月亮', { exact: true })).toBeVisible();
 
   await page.getByRole('searchbox').fill('月亮');
-  await page.locator('.search-button').click();
+  await page.getByRole('searchbox').press('Enter');
+  await page.getByText('义项', { exact: true }).click();
   await expect(page.getByText('月亮义项')).toBeVisible();
 });

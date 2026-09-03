@@ -35,7 +35,7 @@
 | `pages/nameplates/details` / `comments` | done | 普通按钮与加载已收敛；低频 Cell 直接使用 TDesign |
 | `pages/posts/compose` | done | [#195](https://github.com/e-dialect/guantou/issues/195) / [PR #216](https://github.com/e-dialect/guantou/pull/216)：来源锁定、发布状态、字段错误与成功跳转 |
 | `pages/posts/details` | queued | 独立 PR |
-| `pages/flavors/index` / `details` | queued | 搜索、列表与详情操作 |
+| `pages/flavors/index` / `details` | partial | 图鉴索引已迁移 BaseField、BaseButton 与显式 TDesign Picker；详情页后续单独迁移 |
 | `pages/packages/index` / `details` | queued | 搜索、加载与详情操作 |
 | `pages/circles/index` / `details` | queued | 搜索、Picker 与详情操作 |
 | `pages/discovery/index` | queued | 操作按钮与加载状态 |

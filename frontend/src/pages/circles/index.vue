@@ -1,25 +1,40 @@
 <template>
   <PageShell title="方言圈广场">
     <view class="search-row">
-      <input
+      <BaseField
         v-model="search"
-        class="search"
+        name="circle-search"
+        label=""
         placeholder="搜索方言圈"
-        @confirm="refresh"
-      >
-      <button
+        aria-role="searchbox"
+        aria-label="搜索方言圈"
+        confirm-type="search"
+        clearable
+        @enter="refresh"
+      />
+      <BaseButton
         class="search-button"
-        hover-class="search-button--pressed"
-        @tap="refresh"
-      >
-        搜索
-      </button>
+        size="small"
+        text="搜索"
+        @click="refresh"
+      />
     </view>
     <view
       v-if="loading"
-      class="state"
+      class="result-skeleton-list"
     >
-      正在加载方言圈…
+      <view
+        v-for="index in 6"
+        :key="index"
+        class="result-skeleton-card"
+      >
+        <view class="result-skeleton-line result-skeleton-line--title" />
+        <view class="result-skeleton-line result-skeleton-line--body" />
+        <view class="result-skeleton-line result-skeleton-line--meta" />
+        <text class="result-skeleton-text">
+          正在加载卡片…
+        </text>
+      </view>
     </view>
     <view
       v-else-if="error"
@@ -68,6 +83,8 @@
 </template>
 
 <script>
+import BaseButton from '@/components/BaseButton.vue';
+import BaseField from '@/components/BaseField.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import PageShell from '@/components/PageShell.vue';
 import { requireAuth } from '@/services/authGuard';
@@ -77,7 +94,9 @@ import {
 } from '@/services/guantou';
 
 export default {
-  components: { EmptyState, PageShell },
+  components: {
+    BaseButton, BaseField, EmptyState, PageShell,
+  },
   data() {
     return {
       circles: [], error: '', loading: false, search: '',
@@ -122,35 +141,58 @@ export default {
 .search-row {
   display: grid;
   grid-template-columns: 1fr auto;
+  align-items: center;
   gap: var(--space-2);
   margin-bottom: var(--space-3);
 }
 
-.search {
-  box-sizing: border-box;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-pill);
-  padding: 18rpx var(--space-3);
-  background: var(--surface-color);
-  color: var(--text-color);
+.search-row :deep(.base-field) {
+  --td-form-item-vertical-padding: 0;
 }
 
 .search-button {
+  min-height: 80rpx;
   margin: 0;
+  padding: 0 var(--space-3);
+}
+
+.result-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.result-skeleton-card {
+  min-height: 170rpx;
+  padding: var(--space-3);
+  box-sizing: border-box;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
+}
+
+.result-skeleton-line {
+  height: 24rpx;
+  margin-bottom: var(--space-2);
   border-radius: var(--radius-pill);
-  background: var(--accent-color);
-  color: var(--on-accent-color);
-  font-size: var(--font-size-sm);
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  background: var(--surface-subtle-color);
+  animation: result-skeleton-pulse 1.2s ease-in-out infinite;
 }
 
-.search-button::after {
-  border: 0;
+.result-skeleton-line--title { width: 42%; height: 32rpx; }
+.result-skeleton-line--body { width: 76%; }
+.result-skeleton-line--meta { width: 58%; }
+
+.result-skeleton-text {
+  color: var(--muted-color);
+  font-size: var(--font-size-xs);
+  animation: result-skeleton-pulse 1.2s ease-in-out infinite;
 }
 
-.search-button--pressed {
-  transform: scale(0.98);
-  opacity: 0.9;
+@keyframes result-skeleton-pulse {
+  0%,
+  100% { opacity: 0.45; }
+  50% { opacity: 1; }
 }
 
 .circle-card {

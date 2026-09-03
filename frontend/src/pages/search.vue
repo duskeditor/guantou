@@ -11,12 +11,16 @@
             name="search"
             label=""
             placeholder="搜索罐头、铭牌、义项、写法"
+            aria-role="searchbox"
+            aria-label="搜索"
+            confirm-type="search"
             clearable
             focus
             @change="onKeywordInput"
-            @confirm="submitSearch"
+            @enter="submitSearch"
           />
           <BaseButton
+            class="search-button"
             size="small"
             text="搜索"
             @click="submitSearch"
@@ -456,9 +460,12 @@ export default {
       return this.showCans || this.showFlavors || this.showPackages || this.showNameplates;
     },
   },
-  onLoad(option) {
+  onLoad(option = {}) {
     this.loadHistory();
     this.loadHotTags();
+    if (RESULT_SECTIONS.includes(option.tab)) {
+      this.activeTab = option.tab;
+    }
     if (option.keywords || option.key) {
       this.keywords = option.keywords || option.key;
       this.search(this.keywords);

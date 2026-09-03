@@ -8,7 +8,11 @@
     :rules="rules"
     label-align="top"
   >
-    <view class="base-field-control">
+    <view
+      class="base-field-control"
+      :role="ariaRole || undefined"
+      :aria-label="ariaLabel || undefined"
+    >
       <t-textarea
         v-if="type === 'textarea'"
         :value="modelValue"
@@ -17,30 +21,34 @@
         :disabled="disabled"
         :readonly="readonly"
         :focus="focus"
+        :confirm-type="confirmType"
         :autosize="resolvedAutosize"
         :indicator="indicator"
         bordered
         @change="handleChange"
         @blur="$emit('blur', $event)"
         @focus="$emit('focus', $event)"
-        @confirm="$emit('confirm', $event)"
+        @enter="handleEnter"
       />
       <t-input
         v-else
         :value="modelValue"
+        :aria-role="ariaRole || undefined"
+        :aria-label="ariaLabel || undefined"
         :type="inputType"
         :placeholder="placeholder"
         :maxlength="maxlength"
         :disabled="disabled"
         :readonly="readonly"
         :focus="focus"
+        :confirm-type="confirmType"
         :clearable="clearable"
         :status="error ? 'error' : 'default'"
         borderless
         @change="handleChange"
         @blur="$emit('blur', $event)"
         @focus="$emit('focus', $event)"
-        @confirm="$emit('confirm', $event)"
+        @enter="handleEnter"
       />
     </view>
     <view
@@ -81,8 +89,15 @@ export default {
     indicator: { type: Boolean, default: false },
     clearable: { type: Boolean, default: false },
     focus: { type: Boolean, default: false },
+    ariaLabel: { type: String, default: '' },
+    ariaRole: { type: String, default: '' },
+    confirmType: {
+      type: String,
+      default: 'done',
+      validator: (value) => ['return', 'send', 'search', 'next', 'go', 'done'].includes(value),
+    },
   },
-  emits: ['update:modelValue', 'change', 'input', 'blur', 'focus', 'confirm'],
+  emits: ['update:modelValue', 'change', 'input', 'blur', 'focus', 'enter', 'confirm'],
   computed: {
     inputType() {
       if (this.type === 'tel') return 'number';
@@ -99,6 +114,11 @@ export default {
       this.$emit('update:modelValue', value);
       this.$emit('change', value);
       this.$emit('input', value);
+    },
+    handleEnter(event) {
+      this.$emit('enter', event);
+      // Keep the legacy event for existing non-search form consumers.
+      this.$emit('confirm', event);
     },
   },
 };

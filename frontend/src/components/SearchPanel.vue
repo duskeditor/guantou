@@ -12,11 +12,15 @@
         name="search"
         label=""
         placeholder="搜索义项、写法、罐头"
+        aria-role="searchbox"
+        aria-label="搜索"
+        confirm-type="search"
         clearable
         focus
-        @confirm="submitSearch"
+        @enter="submitSearch"
       />
       <BaseButton
+        class="search-button"
         size="small"
         text="搜索"
         @click="submitSearch"
@@ -97,10 +101,23 @@
           action-text="重新搜索"
           @action="submitSearch"
         />
-        <BaseLoading
+        <view
           v-else-if="loading"
-          text="正在搜索…"
-        />
+          class="result-skeleton-list"
+        >
+          <view
+            v-for="index in 6"
+            :key="index"
+            class="result-skeleton-card"
+          >
+            <view class="result-skeleton-line result-skeleton-line--title" />
+            <view class="result-skeleton-line result-skeleton-line--body" />
+            <view class="result-skeleton-line result-skeleton-line--meta" />
+            <text class="result-skeleton-text">
+              正在加载卡片…
+            </text>
+          </view>
+        </view>
         <template v-else>
           <ResultSection
             title="义项"
@@ -183,7 +200,6 @@
 import CanCard from './CanCard.vue';
 import BaseButton from './BaseButton.vue';
 import BaseField from './BaseField.vue';
-import BaseLoading from './BaseLoading.vue';
 import EmptyState from './EmptyState.vue';
 import EntityCard from './EntityCard.vue';
 import ResultSection from './ResultSection.vue';
@@ -196,7 +212,6 @@ export default {
     CanCard,
     BaseButton,
     BaseField,
-    BaseLoading,
     EmptyState,
     EntityCard,
     ResultSection,
@@ -328,6 +343,10 @@ export default {
   box-sizing: border-box;
 }
 
+.searchbar :deep(.base-field) {
+  --td-form-item-vertical-padding: 0;
+}
+
 .back {
   font-size: 56rpx;
   width: 44rpx;
@@ -343,13 +362,51 @@ export default {
 
 .search-button {
   margin: 0;
-  height: 60rpx;
-  line-height: 60rpx;
+  min-height: 80rpx;
   padding: 0 24rpx;
   border-radius: 999rpx;
   background: #1f5c43;
   color: #ffffff;
   font-size: 26rpx;
+}
+
+.result-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.result-skeleton-card {
+  min-height: 170rpx;
+  padding: var(--space-3);
+  box-sizing: border-box;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
+}
+
+.result-skeleton-line {
+  height: 24rpx;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-subtle-color);
+  animation: result-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.result-skeleton-line--title { width: 42%; height: 32rpx; }
+.result-skeleton-line--body { width: 76%; }
+.result-skeleton-line--meta { width: 58%; }
+
+.result-skeleton-text {
+  color: var(--muted-color);
+  font-size: var(--font-size-xs);
+  animation: result-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes result-skeleton-pulse {
+  0%,
+  100% { opacity: 0.45; }
+  50% { opacity: 1; }
 }
 
 .search-content {

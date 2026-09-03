@@ -77,39 +77,58 @@
               name="flavor-search"
               label=""
               placeholder="义项名称、释义或写法"
+              aria-role="searchbox"
+              aria-label="搜索义项"
+              confirm-type="search"
               clearable
-              @confirm="findFlavors"
+              @enter="findFlavors"
             />
             <BaseButton
+              class="search-button"
               size="small"
               text="搜索"
               @click="findFlavors"
             />
           </view>
           <view
-            v-for="candidate in flavorCandidates"
-            :key="candidate.id"
-            class="candidate"
+            v-if="flavorSearching"
+            class="result-skeleton-list"
           >
-            <view class="candidate-copy">
-              <text class="candidate-type">
-                义项
-              </text>
-              <text class="candidate-title">
-                {{ candidate.name }}
-              </text>
-              <text class="candidate-description">
-                {{ candidate.definition || '暂无释义' }}
-              </text>
+            <view
+              v-for="index in 3"
+              :key="index"
+              class="result-skeleton-card"
+            >
+              <view class="result-skeleton-line result-skeleton-line--title" />
+              <view class="result-skeleton-line result-skeleton-line--body" />
             </view>
-            <BaseButton
-              variant="ghost"
-              size="small"
-              :text="hasFlavor(candidate.id) ? '已添加' : '添加'"
-              :disabled="contentBusy || hasFlavor(candidate.id)"
-              @click="changeContent('flavor', candidate.id, 'add')"
-            />
           </view>
+          <template v-else>
+            <view
+              v-for="candidate in flavorCandidates"
+              :key="candidate.id"
+              class="candidate"
+            >
+              <view class="candidate-copy">
+                <text class="candidate-type">
+                  义项
+                </text>
+                <text class="candidate-title">
+                  {{ candidate.name }}
+                </text>
+                <text class="candidate-description">
+                  {{ candidate.definition || '暂无释义' }}
+                </text>
+              </view>
+              <BaseButton
+                variant="ghost"
+                size="small"
+                :text="hasFlavor(candidate.id) ? '已添加' : '添加'"
+                :disabled="contentBusy || hasFlavor(candidate.id)"
+                @click="changeContent('flavor', candidate.id, 'add')"
+              />
+            </view>
+          </template>
         </view>
 
         <view class="search-block">
@@ -122,37 +141,56 @@
               name="can-search"
               label=""
               placeholder="罐头概念或铭牌文字"
+              aria-role="searchbox"
+              aria-label="搜索罐头"
+              confirm-type="search"
               clearable
-              @confirm="findCans"
+              @enter="findCans"
             />
             <BaseButton
+              class="search-button"
               size="small"
               text="搜索"
               @click="findCans"
             />
           </view>
           <view
-            v-for="candidate in canCandidates"
-            :key="candidate.id"
-            class="candidate can-candidate"
+            v-if="canSearching"
+            class="result-skeleton-list"
           >
-            <view class="candidate-copy">
-              <CanCard
-                :can="candidate"
-                @open="toCan"
-              >
-                <template #action-right>
-                  <BaseButton
-                    variant="ghost"
-                    size="small"
-                    :text="hasCan(candidate.id) ? '已添加' : '加入集盒'"
-                    :disabled="contentBusy || hasCan(candidate.id)"
-                    @click="changeContent('can', candidate.id, 'add')"
-                  />
-                </template>
-              </CanCard>
+            <view
+              v-for="index in 3"
+              :key="index"
+              class="result-skeleton-card"
+            >
+              <view class="result-skeleton-line result-skeleton-line--title" />
+              <view class="result-skeleton-line result-skeleton-line--body" />
             </view>
           </view>
+          <template v-else>
+            <view
+              v-for="candidate in canCandidates"
+              :key="candidate.id"
+              class="candidate can-candidate"
+            >
+              <view class="candidate-copy">
+                <CanCard
+                  :can="candidate"
+                  @open="toCan"
+                >
+                  <template #action-right>
+                    <BaseButton
+                      variant="ghost"
+                      size="small"
+                      :text="hasCan(candidate.id) ? '已添加' : '加入集盒'"
+                      :disabled="contentBusy || hasCan(candidate.id)"
+                      @click="changeContent('can', candidate.id, 'add')"
+                    />
+                  </template>
+                </CanCard>
+              </view>
+            </view>
+          </template>
         </view>
       </SectionBlock>
 
@@ -282,6 +320,7 @@ export default {
       canCandidates: [],
       canSearch: '',
       canSearchRequestId: 0,
+      canSearching: false,
       contentBusy: false,
       currentUser: currentUser(),
       editDraft: { title: '', description: '' },
@@ -289,6 +328,7 @@ export default {
       flavorCandidates: [],
       flavorSearch: '',
       flavorSearchRequestId: 0,
+      flavorSearching: false,
       id: 0,
       loadError: '',
       loading: false,
@@ -380,6 +420,7 @@ export default {
       if (!keyword) return;
       const requestId = this.flavorSearchRequestId + 1;
       this.flavorSearchRequestId = requestId;
+      this.flavorSearching = true;
       try {
         const response = await searchGuantou(keyword, { limit: 20 });
         if (requestId !== this.flavorSearchRequestId) return;
@@ -393,6 +434,8 @@ export default {
         if (requestId === this.flavorSearchRequestId) {
           uni.showToast({ title: '义项搜索失败', icon: 'none' });
         }
+      } finally {
+        if (requestId === this.flavorSearchRequestId) this.flavorSearching = false;
       }
     },
     async findCans() {
@@ -400,6 +443,7 @@ export default {
       if (!keyword) return;
       const requestId = this.canSearchRequestId + 1;
       this.canSearchRequestId = requestId;
+      this.canSearching = true;
       try {
         const response = await searchGuantou(keyword, { limit: 20 });
         if (requestId !== this.canSearchRequestId) return;
@@ -413,6 +457,8 @@ export default {
         if (requestId === this.canSearchRequestId) {
           uni.showToast({ title: '罐头搜索失败', icon: 'none' });
         }
+      } finally {
+        if (requestId === this.canSearchRequestId) this.canSearching = false;
       }
     },
     hasFlavor(id) {
@@ -535,26 +581,51 @@ export default {
 .search-row {
   display: grid;
   grid-template-columns: 1fr auto;
+  align-items: center;
   gap: var(--space-2);
 }
 
-.search-field {
-  margin-bottom: 0;
-  min-height: 96rpx;
-  padding-top: 0;
-  padding-bottom: 0;
-  line-height: 96rpx;
+.search-row :deep(.base-field) {
+  --td-form-item-vertical-padding: 0;
 }
 
-.small-button {
-  min-height: 96rpx;
+.search-button {
+  min-height: 80rpx;
+  margin: 0;
   padding: 0 var(--space-3);
-  border-radius: var(--radius-pill);
-  line-height: 96rpx;
 }
 
-.small-button::after {
-  border: 0;
+.result-skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.result-skeleton-card {
+  min-height: 130rpx;
+  padding: var(--space-3);
+  box-sizing: border-box;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
+}
+
+.result-skeleton-line {
+  height: 24rpx;
+  margin-bottom: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-subtle-color);
+  animation: result-skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+.result-skeleton-line--title { width: 42%; height: 32rpx; }
+.result-skeleton-line--body { width: 76%; }
+
+@keyframes result-skeleton-pulse {
+  0%,
+  100% { opacity: 0.45; }
+  50% { opacity: 1; }
 }
 
 .candidate {
