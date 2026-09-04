@@ -39,6 +39,7 @@
       scroll-y
       class="shell-content shell-scroll"
       :class="contentClass"
+      :scroll-top="contentScrollTop"
       @scrolltolower="$emit('scrolltolower')"
     >
       <slot />
@@ -80,6 +81,10 @@ export default {
       type: Boolean,
       default: true,
     },
+    scrollResetKey: {
+      type: [String, Number],
+      default: 0,
+    },
     contentClass: {
       type: [String, Array, Object],
       default: '',
@@ -92,8 +97,17 @@ export default {
   emits: ['action', 'back', 'scrolltolower'],
   data() {
     return {
+      contentScrollTop: 0,
       resolvedTheme: 'light',
     };
+  },
+  watch: {
+    scrollResetKey() {
+      this.contentScrollTop = 1;
+      this.$nextTick(() => {
+        this.contentScrollTop = 0;
+      });
+    },
   },
   mounted() {
     this.handleThemeChange(applyTheme(getThemePreference()));

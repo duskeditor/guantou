@@ -147,6 +147,7 @@ describe('search page orchestration', () => {
     expect(listCans).toHaveBeenNthCalledWith(2, {
       search: '阿长测试', page: 2, page_size: 20,
     });
+    expect(page.resultScrollKey).toBe(1);
     expect(page.results.cans).toHaveLength(10);
     expect(page.resultPages.cans.page).toBe(2);
     expect(page.resultPages.cans.next).toBeNull();

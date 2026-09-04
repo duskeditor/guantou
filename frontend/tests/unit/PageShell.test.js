@@ -73,6 +73,21 @@ describe('PageShell', () => {
     wrapper.unmount();
   });
 
+  it('resets the internal scroll view when the reset key changes', async () => {
+    const wrapper = mount(PageShell, {
+      props: { title: '搜索', scrollResetKey: 0 },
+      global: {
+        stubs: { 'scroll-view': { template: '<div><slot /></div>' } },
+      },
+    });
+
+    await wrapper.setProps({ scrollResetKey: 1 });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.vm.contentScrollTop).toBe(0);
+    wrapper.unmount();
+  });
+
   it('applies a theme update without browser-only globals', async () => {
     uni.getStorageSync.mockReturnValue('light');
     uni.getSystemInfoSync.mockReturnValue({ theme: 'light' });

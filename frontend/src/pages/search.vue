@@ -2,6 +2,7 @@
   <PageShell
     title="搜索"
     :scroll="true"
+    :scroll-reset-key="resultScrollKey"
   >
     <template #before>
       <view class="search-controls">
@@ -395,6 +396,7 @@ export default {
       searchError: '',
       results: emptyResults(),
       resultPages: emptyResultPages(),
+      resultScrollKey: 0,
       resultRequestIds: RESULT_SECTIONS.reduce((ids, section) => ({
         ...ids,
         [section]: 0,
@@ -576,6 +578,7 @@ export default {
         ...this.resultPages,
         [section]: { ...state, error: '', loading: true },
       };
+      this.scrollToResults();
       try {
         const [response] = await Promise.all([
           RESULT_FETCHERS[section]({
@@ -624,6 +627,9 @@ export default {
       } catch (error) {
         if (requestId === this.suggestRequestId) this.suggestions = [];
       }
+    },
+    scrollToResults() {
+      this.resultScrollKey += 1;
     },
     onKeywordInput(value) {
       const keyword = String(value?.detail?.value ?? value ?? '').trim();
