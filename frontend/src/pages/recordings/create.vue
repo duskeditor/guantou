@@ -499,11 +499,15 @@ export default {
         const restore = await confirm({
           title: '发现未完成草稿',
           content: '是否恢复最近一次未完成的录音？选择取消后可选择放弃或稍后处理。',
+          confirmText: '恢复草稿',
+          cancelText: '稍后处理',
         });
         if (restore) await this.restoreDraft(latestDraft.id);
         else if (await confirm({
           title: '放弃这份草稿？',
           content: '放弃后将删除这份草稿及其临时音频，文字也无法恢复。',
+          confirmText: '放弃草稿',
+          cancelText: '保留草稿',
           danger: true,
         })) {
           await deleteRecordingDraft(latestDraft.id, this.ownerScope);
