@@ -181,7 +181,9 @@ export default {
 .base-button--look-soft {
   --td-brand-color: var(--accent-subtle-color);
   --td-brand-color-active: var(--accent-subtle-color);
-  --td-text-color-anti: var(--accent-color);
+  --td-text-color-anti: var(--text-color);
+  --td-button-primary-color: var(--text-color);
+  --td-button-primary-bg-color: var(--accent-subtle-color);
 }
 
 .base-button--look-contrast {
@@ -215,8 +217,16 @@ export default {
 
 .base-button--look-fresh {
   --td-brand-color: var(--accent-subtle-color);
-  --td-brand-color-active: var(--accent-subtle-color);
-  --td-text-color-anti: var(--accent-color);
+  --td-brand-color-active: var(--surface-subtle-color);
+  --td-text-color-anti: var(--text-color);
+  --td-button-primary-color: var(--text-color);
+  --td-button-primary-bg-color: var(--accent-subtle-color);
+  --td-button-primary-active-bg-color: var(--surface-subtle-color);
+  --td-button-primary-active-border-color: var(--border-color);
+  --td-button-primary-outline-color: var(--text-color);
+  --td-button-primary-outline-border-color: var(--accent-color);
+  --td-button-primary-outline-active-bg-color: var(--surface-subtle-color);
+  --td-button-primary-outline-active-border-color: var(--text-color);
   --td-button-border-radius: var(--radius-pill);
 }
 
@@ -236,20 +246,31 @@ export default {
 .base-button--look-wash {
   --td-brand-color: var(--accent-subtle-color);
   --td-brand-color-active: var(--surface-subtle-color);
-  --td-text-color-anti: var(--text-secondary-color);
+  --td-text-color-anti: var(--text-color);
+  --td-button-primary-outline-color: var(--text-color);
+  --td-button-primary-outline-border-color: var(--border-color);
+  --td-button-primary-outline-active-bg-color: var(--surface-subtle-color);
+  --td-button-primary-outline-active-border-color: var(--text-color);
 }
 
 .base-button--look-fog {
-  --td-brand-color: var(--surface-subtle-color);
-  --td-brand-color-active: var(--surface-subtle-color);
+  --td-brand-color: var(--text-secondary-color);
+  --td-brand-color-active: var(--text-color);
   --td-text-color-anti: var(--text-secondary-color);
+  --td-button-primary-outline-color: var(--text-secondary-color);
+  --td-button-primary-outline-border-color: var(--border-color);
   box-shadow: inset 0 0 0 1px var(--border-color);
 }
 
-.base-button--ghost.base-button--look-filled,
-.base-button--ghost.base-button--look-soft {
+.base-button--ghost.base-button--look-filled {
   --td-brand-color: var(--accent-subtle-color);
-  --td-text-color-anti: var(--accent-color);
+  --td-brand-color-active: var(--surface-subtle-color);
+  --td-text-color-anti: var(--text-color);
+  --td-button-primary-color: var(--text-color);
+  --td-button-primary-bg-color: var(--accent-subtle-color);
+  --td-button-primary-border-color: var(--accent-subtle-color);
+  --td-button-primary-active-bg-color: var(--surface-subtle-color);
+  --td-button-primary-active-border-color: var(--border-color);
 }
 
 .base-button--ghost.base-button--look-quiet {
