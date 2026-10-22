@@ -47,11 +47,16 @@
 | RecordingEntryLink | `accepted` | 已采用 | `RecordingEntryLink.status` |
 | RecordingEntryLink | `disputed` | 待补充 | `RecordingEntryLink.status` |
 | RecordingEntryLink | `rejected` | 暂不能处理 | `RecordingEntryLink.status` |
-| EvidenceLink | `submitted` | 处理中 | `EvidenceLink.status` |
-| EvidenceLink | `supports` | 已采用 | `EvidenceLink.status`（仅表示支持关系） |
-| EvidenceLink | `disputes` | 待补充 | `EvidenceLink.status` |
-| UsageAttestation | `active` | 已采用 | `UsageAttestation.active` |
-| UsageAttestation | `inactive` | 暂不能处理 | `UsageAttestation.active` |
+| EvidenceLink | `submitted` | 处理中 | `EvidenceLink.relation_type` |
+| EvidenceLink | `supports` | 已采用 | `EvidenceLink.relation_type`（仅表示支持关系） |
+| EvidenceLink | `disputes` | 待补充 | `EvidenceLink.relation_type` |
+| UsageAttestation | `true` | 已采用 | `UsageAttestation.active`（布尔值） |
+| UsageAttestation | `false` | 暂不能处理 | `UsageAttestation.active`（布尔值） |
+
+`EvidenceLink` 的关系值来自 `relation_type`，不存在 `status` 字段。
+`UsageAttestation.active` 在 API 中为布尔值；展示边界调用
+`contributionStatus('usage_attestation', active)` 时将 `true` / `false` 分别映射为
+`active` / `inactive` 展示键，同时兼容已有字符串调用。展示键不是 API 的内部状态值。
 
 ### 三种使用场景的固定短文案
 
@@ -104,8 +109,8 @@
 | EvidenceLink | `submitted` | 已提交依据 | 原始依据已记录，整理结果不会覆盖原文。 | 查看原文、出处和关联对象 |
 | EvidenceLink | `supports` | 支持该说法 | 被作为支持依据，不表示单独证明语言事实。 | 查看支持对象和其他依据 |
 | EvidenceLink | `disputes` | 对该说法有疑问 | 被作为质疑依据，原始资料仍保留。 | 查看质疑对象和相关依据 |
-| UsageAttestation | `active` | 已记录本地用法 | 记录了用户在所选范围内的用法确认，不代表官方认证。 | 查看或补充说明 |
-| UsageAttestation | `inactive` | 已撤回本地用法 | 当前不再作为有效记录展示。 | 仍使用时重新提交说明 |
+| UsageAttestation | `true` | 已记录本地用法 | 记录了用户在所选范围内的用法确认，不代表官方认证。 | 查看或补充说明 |
+| UsageAttestation | `false` | 已撤回本地用法 | 当前不再作为有效记录展示。 | 仍使用时重新提交说明 |
 
 ## 禁止词与边界
 
