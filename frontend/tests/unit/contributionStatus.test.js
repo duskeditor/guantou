@@ -26,6 +26,28 @@ describe('#427 subtask B: contribution status contract', () => {
     expect(contributionStatus('evidence_link', 'supports').description).toContain('不表示');
   });
 
+  it.each([
+    [true, 'active', '已记录本地用法', '已采用'],
+    [false, 'inactive', '已撤回本地用法', '暂不能处理'],
+  ])('maps the API active boolean %s and preserves string compatibility', (value, key, label, phase) => {
+    const status = contributionStatus('usage_attestation', value);
+    expect(status).toBe(contributionStatus('usage_attestation', key));
+    expect(status).toMatchObject({ label, phase, source: 'UsageAttestation.active' });
+  });
+
+  it.each(['submitted', 'supports', 'disputes'])('uses the real evidence relation field for %s', (relation) => {
+    expect(contributionStatus('evidence_link', relation).source).toBe('EvidenceLink.relation_type');
+  });
+
+  it.each([null, undefined, '', 'future_state', 0, 1])('keeps unknown usage values %s unconfirmed', (value) => {
+    expect(contributionStatus('usage_attestation', value)).toBe(UNKNOWN_STATUS);
+  });
+
+  it('does not interpret booleans as statuses for other object types', () => {
+    expect(contributionStatus('recording', true)).toBe(UNKNOWN_STATUS);
+    expect(contributionStatus('recording', false)).toBe(UNKNOWN_STATUS);
+  });
+
   it('maps the four stable user-facing phases and keeps submission feedback separate', () => {
     expect(CONTRIBUTION_PHASES).toEqual(['处理中', '已采用', '待补充', '暂不能处理']);
     expect(contributionStatus('recording_link', 'suggested').phase).toBe('处理中');

@@ -227,7 +227,7 @@ const STATUS_MAP = Object.freeze({
       label: '已提交依据',
       description: '这份资料作为原始依据被记录下来，原文不会被整理结果覆盖。',
       nextStep: '可以查看原文、出处和它关联的对象。',
-      source: 'EvidenceLink.status',
+      source: 'EvidenceLink.relation_type',
       tone: 'neutral',
     }),
     supports: Object.freeze({
@@ -235,7 +235,7 @@ const STATUS_MAP = Object.freeze({
       label: '支持该说法',
       description: '整理记录将这份资料作为支持依据，并不表示它单独证明了语言事实。',
       nextStep: '可以查看它支持的对象和其他依据。',
-      source: 'EvidenceLink.status',
+      source: 'EvidenceLink.relation_type',
       tone: 'positive',
     }),
     disputes: Object.freeze({
@@ -243,7 +243,7 @@ const STATUS_MAP = Object.freeze({
       label: '对该说法有疑问',
       description: '整理记录将这份资料作为质疑依据，原始资料仍会保留。',
       nextStep: '可以查看质疑对象和相关依据。',
-      source: 'EvidenceLink.status',
+      source: 'EvidenceLink.relation_type',
       tone: 'caution',
     }),
   }),
@@ -268,7 +268,12 @@ const STATUS_MAP = Object.freeze({
 });
 
 export function contributionStatus(objectType, status) {
-  const key = String(status || '').trim();
+  // The API exposes UsageAttestation.active as a boolean; retain legacy display keys.
+  let normalizedStatus = status;
+  if (objectType === 'usage_attestation' && typeof status === 'boolean') {
+    normalizedStatus = status ? 'active' : 'inactive';
+  }
+  const key = String(normalizedStatus || '').trim();
   return STATUS_MAP[objectType]?.[key] || UNKNOWN_STATUS;
 }
 
