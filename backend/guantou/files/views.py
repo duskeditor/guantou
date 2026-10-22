@@ -16,7 +16,7 @@ from .audio_processing import (
     AudioProcessingError,
     normalize_audio_to_mp3,
 )
-from .storage import delete_file, random_str, upload_file
+from .storage import delete_file, logical_key_from_url, random_str, upload_file
 
 ALLOWED_AUDIO_CONTENT_TYPES = frozenset(
     {
@@ -28,10 +28,12 @@ ALLOWED_AUDIO_CONTENT_TYPES = frozenset(
         "audio/mp4",
         "audio/x-m4a",
         "audio/m4a",
+        "audio/webm",
+        "audio/ogg",
     }
 )
 
-ALLOWED_AUDIO_EXTENSIONS = frozenset({"mp3", "wav", "m4a"})
+ALLOWED_AUDIO_EXTENSIONS = frozenset({"mp3", "wav", "m4a", "webm", "ogg"})
 
 GENERIC_BINARY_CONTENT_TYPES = frozenset({"", "application/octet-stream"})
 
@@ -50,7 +52,9 @@ def file_extension(uploaded_file, file_type):
 
 
 def validate_audio_format(uploaded_file):
-    content_type = str(uploaded_file.content_type or "").lower()
+    content_type = (
+        str(uploaded_file.content_type or "").split(";", 1)[0].strip().lower()
+    )
     ext = file_extension(uploaded_file, "audio").lower()
     if content_type not in ALLOWED_AUDIO_CONTENT_TYPES | GENERIC_BINARY_CONTENT_TYPES:
         raise BadRequestException("不支持的音频格式")
@@ -112,18 +116,21 @@ def files(request):
             response_data["duration_ms"] = duration_ms
         return JsonResponse(response_data, status=200)
     if request.method == "DELETE":
-        body = demjson3.decode(request.body)
-        suffix = body["url"].split("/", 4)[-1]
-        file_type = suffix.split("/", 2)[0]
-        user_id = suffix.split("/", 2)[1]
+        try:
+            body = demjson3.decode(request.body)
+            file_key = logical_key_from_url(body.get("url"))
+        except (AttributeError, KeyError, TypeError, ValueError):
+            return JsonResponse({"msg": "文件地址无效"}, status=400)
+        segments = file_key.split("/")
+        file_type, user_id = segments[1], segments[2]
         if user.id != int(user_id) and not user.is_superuser:
             return JsonResponse({}, status=401)
-        filename = "_".join(suffix.split("/", 2)[2].split("/"))
+        filename = "_".join(segments[3:])
         path = os.path.join(settings.MEDIA_ROOT, file_type, user_id, filename)
         if not os.path.exists(path):
             return JsonResponse({}, status=404)
         os.remove(path)
-        delete_file(body["url"].split("/", 3)[-1])
+        delete_file(file_key)
         return JsonResponse({}, status=200)
     return JsonResponse({}, status=405)
 
